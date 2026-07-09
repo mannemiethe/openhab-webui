@@ -224,7 +224,7 @@ async function getItemsWithTags() {
     return []
   }
 
-  const sourceResult = await api.getItems({ metadata: cfg.fetchMetadata, tags: cfg.itemTags }).catch((e) => {
+  const sourceResult = await api.getItems({ metadata: cfg.fetchMetadata, tags: cfg.itemTags, recursive: ('recursive' in cfg) ? cfg.recursive as boolean : undefined }).catch((e) => {
     if (e instanceof ApiError && e.response.status === 404) {
       console.warn(`oh-repeater: no items found with tags "${cfg.itemTags}"`)
     } else {
