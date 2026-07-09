@@ -1,0 +1,110 @@
+diff --git a/bundles/org.openhab.core.io.rest.core/src/main/java/org/openhab/core/io/rest/core/internal/item/ItemResource.java b/bundles/org.openhab.core.io.rest.core/src/main/java/org/openhab/core/io/rest/core/internal/item/ItemResource.java
+index 2f8d2f4f2..ba6268a45 100644
+--- a/bundles/org.openhab.core.io.rest.core/src/main/java/org/openhab/core/io/rest/core/internal/item/ItemResource.java
++++ b/bundles/org.openhab.core.io.rest.core/src/main/java/org/openhab/core/io/rest/core/internal/item/ItemResource.java
+@@ -256,6 +256,7 @@ public class ItemResource implements RESTResource {
+             @QueryParam("tags") @Parameter(description = "item tag filter") @Nullable String tags,
+             @DefaultValue(".*") @QueryParam("metadata") @Parameter(description = "metadata selector - a comma separated list or a regular expression (returns all if no value given)") @Nullable String namespaceSelector,
+             @DefaultValue("false") @QueryParam("recursive") @Parameter(description = "get member items recursively") boolean recursive,
++            @QueryParam("depth") @Parameter(description = "limit member item traversal depth, where 0 means no members, 1 means direct members and unset preserves recursive behavior") @Nullable Integer depth,
+             @DefaultValue("false") @QueryParam("parents") @Parameter(description = "get parent group items recursively") boolean parents,
+             @QueryParam("fields") @Parameter(description = "limit output to the given fields (comma separated)") @Nullable String fields,
+             @DefaultValue("false") @QueryParam("staticDataOnly") @Parameter(description = "provides a cacheable list of values not expected to change regularly and checks the If-Modified-Since header, all other parameters are ignored except \"metadata\"") boolean staticDataOnly) {
+@@ -288,7 +289,9 @@ public class ItemResource implements RESTResource {
+         }
+ 
+         Stream<EnrichedItemDTO> itemStream = getItems(type, tags).stream() //
+-                .map(item -> EnrichedItemDTOMapper.map(item, recursive, null, uriBuilder, locale, zoneId)) //
++                .map(item -> depth == null ? EnrichedItemDTOMapper.map(item, recursive, null, uriBuilder, locale, zoneId)
++                        : EnrichedItemDTOMapper.mapWithDepth(item, Math.max(0, depth), null, uriBuilder, locale,
++                                zoneId)) //
+                 .peek(dto -> {
+                     if (parents) {
+                         addParents(dto, uriInfo, httpHeaders, locale, zoneId);
+@@ -348,6 +351,7 @@ public class ItemResource implements RESTResource {
+             @HeaderParam(HttpHeaders.ACCEPT_LANGUAGE) @Parameter(description = "language") @Nullable String language,
+             @DefaultValue(".*") @QueryParam("metadata") @Parameter(description = "metadata selector - a comma separated list or a regular expression (returns all if no value given)") @Nullable String namespaceSelector,
+             @DefaultValue("true") @QueryParam("recursive") @Parameter(description = "get member items if the item is a group item") boolean recursive,
++            @QueryParam("depth") @Parameter(description = "limit member item traversal depth, where 0 means no members, 1 means direct members and unset preserves recursive behavior") @Nullable Integer depth,
+             @DefaultValue("false") @QueryParam("parents") @Parameter(description = "get parent group items recursively") boolean parents,
+             @PathParam("itemName") @Parameter(description = "item name") String itemName) {
+         final Locale locale = localeService.getLocale(language);
+@@ -359,8 +363,10 @@ public class ItemResource implements RESTResource {
+ 
+         // if it exists
+         if (item != null) {
+-            EnrichedItemDTO dto = EnrichedItemDTOMapper.map(item, recursive, null, uriBuilder(uriInfo, httpHeaders),
+-                    locale, zoneId);
++            EnrichedItemDTO dto = depth == null
++                    ? EnrichedItemDTOMapper.map(item, recursive, null, uriBuilder(uriInfo, httpHeaders), locale, zoneId)
++                    : EnrichedItemDTOMapper.mapWithDepth(item, Math.max(0, depth), null,
++                            uriBuilder(uriInfo, httpHeaders), locale, zoneId);
+             if (parents) {
+                 addParents(dto, uriInfo, httpHeaders, locale, zoneId);
+             }
+diff --git a/bundles/org.openhab.core.io.rest.core/src/main/java/org/openhab/core/io/rest/core/item/EnrichedItemDTOMapper.java b/bundles/org.openhab.core.io.rest.core/src/main/java/org/openhab/core/io/rest/core/item/EnrichedItemDTOMapper.java
+index e831294dd..7073d8f95 100644
+--- a/bundles/org.openhab.core.io.rest.core/src/main/java/org/openhab/core/io/rest/core/item/EnrichedItemDTOMapper.java
++++ b/bundles/org.openhab.core.io.rest.core/src/main/java/org/openhab/core/io/rest/core/item/EnrichedItemDTOMapper.java
+@@ -73,16 +73,36 @@ public class EnrichedItemDTOMapper {
+     public static EnrichedItemDTO map(Item item, boolean drillDown, @Nullable Predicate<Item> itemFilter,
+             @Nullable UriBuilder uriBuilder, @Nullable Locale locale, @Nullable ZoneId zoneId) {
+         ItemDTO itemDTO = ItemDTOMapper.map(item);
+-        return map(item, itemDTO, drillDown, itemFilter, uriBuilder, locale, zoneId, new ArrayList<>());
++        return map(item, itemDTO, drillDown ? -1 : 0, itemFilter, uriBuilder, locale, zoneId, new ArrayList<>());
+     }
+ 
+-    private static EnrichedItemDTO mapRecursive(Item item, @Nullable Predicate<Item> itemFilter,
++    /**
++     * Maps item into enriched item DTO object with limited member traversal depth.
++     *
++     * @param item the item
++     * @param depth member traversal depth, where 0 means no members, 1 means direct members and values smaller than 0
++     *            mean unlimited recursive traversal
++     * @param itemFilter a predicate that filters items while traversing the tree (true means that an item is
++     *            considered, can be null)
++     * @param uriBuilder if present the URI builder contains one template that will be replaced by the specific item
++     *            name
++     * @param locale locale (can be null)
++     * @param zoneId time-zone id (can be null)
++     * @return item DTO object
++     */
++    public static EnrichedItemDTO mapWithDepth(Item item, int depth, @Nullable Predicate<Item> itemFilter,
++            @Nullable UriBuilder uriBuilder, @Nullable Locale locale, @Nullable ZoneId zoneId) {
++        ItemDTO itemDTO = ItemDTOMapper.map(item);
++        return map(item, itemDTO, depth, itemFilter, uriBuilder, locale, zoneId, new ArrayList<>());
++    }
++
++    private static EnrichedItemDTO mapRecursive(Item item, int remainingDepth, @Nullable Predicate<Item> itemFilter,
+             @Nullable UriBuilder uriBuilder, @Nullable Locale locale, @Nullable ZoneId zoneId, List<Item> parents) {
+         ItemDTO itemDTO = ItemDTOMapper.map(item);
+-        return map(item, itemDTO, true, itemFilter, uriBuilder, locale, zoneId, parents);
++        return map(item, itemDTO, remainingDepth, itemFilter, uriBuilder, locale, zoneId, parents);
+     }
+ 
+-    private static EnrichedItemDTO map(Item item, ItemDTO itemDTO, boolean drillDown,
++    private static EnrichedItemDTO map(Item item, ItemDTO itemDTO, int remainingDepth,
+             @Nullable Predicate<Item> itemFilter, @Nullable UriBuilder uriBuilder, @Nullable Locale locale,
+             @Nullable ZoneId zoneId, List<Item> parents) {
+         if (item instanceof GroupItem) {
+@@ -130,16 +150,17 @@ public class EnrichedItemDTOMapper {
+                 unitSymbol = baseNumberItem.getUnitSymbol();
+             }
+             EnrichedItemDTO[] memberDTOs;
+-            if (drillDown) {
++            if (remainingDepth != 0) {
+                 Collection<EnrichedItemDTO> members = new LinkedHashSet<>();
++                int childDepth = remainingDepth < 0 ? -1 : remainingDepth - 1;
+                 for (Item member : groupItem.getMembers()) {
+                     if (parents.contains(member)) {
+                         LOGGER.error(
+                                 "Recursive group membership found: {} is a member of {}, but it is also one of its ancestors.",
+                                 member.getName(), groupItem.getName());
+                     } else if (itemFilter == null || itemFilter.test(member)) {
+-                        members.add(
+-                                mapRecursive(member, itemFilter, uriBuilder, locale, zoneId, new ArrayList<>(parents)));
++                        members.add(mapRecursive(member, childDepth, itemFilter, uriBuilder, locale, zoneId,
++                                new ArrayList<>(parents)));
+                     }
+                 }
+                 memberDTOs = members.toArray(new EnrichedItemDTO[0]);

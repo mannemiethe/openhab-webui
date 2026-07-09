@@ -224,7 +224,7 @@ async function getItemsWithTags() {
     return []
   }
 
-  const sourceResult = await api.getItems({ metadata: cfg.fetchMetadata, tags: cfg.itemTags, recursive: ('recursive' in cfg) ? cfg.recursive as boolean : undefined }).catch((e) => {
+  const sourceResult = await api.getItems({ metadata: cfg.fetchMetadata, tags: cfg.itemTags, recursive: ('recursive' in cfg) ? cfg.recursive as boolean : undefined, depth: ('depth' in cfg) ? cfg.depth as number : undefined }).catch((e) => {
     if (e instanceof ApiError && e.response.status === 404) {
       console.warn(`oh-repeater: no items found with tags "${cfg.itemTags}"`)
     } else {
@@ -246,7 +246,7 @@ async function getItemsInGroup() {
     console.warn('oh-repeater: groupItem is empty')
     return []
   }
-  const sourceResult = await api.getItemByName({ itemName: cfg.groupItem, metadata: cfg.fetchMetadata, recursive: ('recursive' in cfg) ? cfg.recursive as boolean : undefined }).catch((e) => {
+  const sourceResult = await api.getItemByName({ itemName: cfg.groupItem, metadata: cfg.fetchMetadata, recursive: ('recursive' in cfg) ? cfg.recursive as boolean : undefined, depth: ('depth' in cfg) ? cfg.depth as number : undefined }).catch((e) => {
     if (e instanceof ApiError && e.response.status === 404) {
       error.value = `oh-repeater: group item "${cfg.groupItem}" not found`
       console.warn(error.value)

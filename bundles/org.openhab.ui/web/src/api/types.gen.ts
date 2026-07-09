@@ -3569,6 +3569,10 @@ export type GetItemByNameData = {
          */
         recursive?: boolean;
         /**
+         * limit member item traversal depth, where 0 means no members, 1 means direct members and unset preserves recursive behavior
+         */
+        depth?: number;
+        /**
          * get parent group items recursively
          */
         parents?: boolean;
@@ -3711,6 +3715,10 @@ export type GetItemsData = {
          * get member items recursively
          */
         recursive?: boolean;
+        /**
+         * limit member item traversal depth, where 0 means no members, 1 means direct members and unset preserves recursive behavior
+         */
+        depth?: number;
         /**
          * get parent group items recursively
          */
