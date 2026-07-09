@@ -9,11 +9,11 @@ export default () => [
   pt(
     'constants',
     'Widget Constants',
-    'Object with key:constant pairs. Constants are available to expressions in all child components via the <code>const</code> object.<br />Constants are evaluated once before the widget is displayed the first time and cannot be changed.'
+    'Object with key:constant pairs. Constants are available to expressions in all child components via the <code>const</code> object.<br />Constants cannot be changed by widget actions and are re-evaluated when dependency values change.'
   ),
   pt(
     'variables',
     'Widget Variables',
-    'Object with key:variable default value pairs. Variables are available to expressions in all child components via the <code>vars</code> object and take precedence over variables with the same name from higher contexts.<br />Variables are evaluated once before the widget is displayed the first time . Their values can only be changed by other component variable actions (e.g. <a class="external text-color-blue" target="_blank" href="https://www.openhab.org/docs/ui/components/oh-button.html#action-variable">oh-button</a>)'
+    'Object with key:variable default value pairs. Variables are available to expressions in all child components via the <code>vars</code> object and take precedence over variables with the same name from higher contexts.<br />Variable defaults are re-evaluated while they still have their previous default value, allowing late item state dependencies to initialize them. Once changed by a component variable action (e.g. <a class="external text-color-blue" target="_blank" href="https://www.openhab.org/docs/ui/components/oh-button.html#action-variable">oh-button</a>), their values are preserved.'
   )
 ]
