@@ -9,9 +9,10 @@
 <script>
 import { f7 } from 'framework7-vue'
 
-import { computed, reactive, watchEffect } from 'vue'
+import { computed, nextTick, watch } from 'vue'
 import { useWidgetContext } from '@/components/widgets/useWidgetContext'
 import { OhContextDefinition } from '@/assets/definitions/widgets/system'
+import { useStatesStore } from '@/js/stores/useStatesStore'
 
 export default {
   inheritAttrs: false,
@@ -22,67 +23,8 @@ export default {
   setup(props) {
     const { varScope, childContext, evaluateExpression, defaultSlots } = useWidgetContext(computed(() => props.context))
     varScope.value = (props.context.varScope || 'varScope') + '-' + f7.utils.id()
-
-    const constants = reactive({})
-    const localCtxVars = reactive({})
-    const variableDefaults = new Map()
-
-    const valueFingerprint = (value) => {
-      try {
-        return JSON.stringify(value)
-      } catch {
-        return String(value)
-      }
-    }
-
-    watchEffect(() => {
-      if (!props.context?.component?.config) return
-
-      const sourceConst = props.context.component.config.constants || {}
-      if (!sourceConst || typeof sourceConst !== 'object') return
-
-      for (const key of Object.keys(constants)) {
-        if (!Object.prototype.hasOwnProperty.call(sourceConst, key)) delete constants[key]
-      }
-      for (const key in sourceConst) {
-        constants[key] = evaluateExpression(key, sourceConst[key])
-      }
-    })
-
-    watchEffect(() => {
-      if (!props.context?.component?.config) return
-
-      const sourceCtxVars = props.context.component.config.variables || {}
-      if (!sourceCtxVars || typeof sourceCtxVars !== 'object') return
-
-      for (const key of Object.keys(localCtxVars)) {
-        const previousDefault = variableDefaults.get(key)
-        if (
-          !Object.prototype.hasOwnProperty.call(sourceCtxVars, key) &&
-          previousDefault &&
-          valueFingerprint(localCtxVars[key]) === previousDefault.fingerprint
-        ) {
-          delete localCtxVars[key]
-          variableDefaults.delete(key)
-        }
-      }
-      for (const key in sourceCtxVars) {
-        const evaluatedDefault = evaluateExpression(key, sourceCtxVars[key])
-        const evaluatedDefaultFingerprint = valueFingerprint(evaluatedDefault)
-        const previousDefault = variableDefaults.get(key)
-        const variableExists = Object.prototype.hasOwnProperty.call(localCtxVars, key)
-        const variableStillHasDefault = previousDefault && valueFingerprint(localCtxVars[key]) === previousDefault.fingerprint
-
-        if (!variableExists || variableStillHasDefault) {
-          if (!previousDefault || previousDefault.fingerprint !== evaluatedDefaultFingerprint) {
-            localCtxVars[key] = evaluatedDefault
-          }
-        }
-        variableDefaults.set(key, { fingerprint: evaluatedDefaultFingerprint })
-      }
-    })
-
-    return { varScope, childContext, evaluateExpression, defaultSlots, constants, localCtxVars }
+    const statesStore = useStatesStore()
+    return { varScope, childContext, evaluateExpression, defaultSlots, statesStore }
   },
   computed: {
     fn() {
@@ -111,16 +53,70 @@ export default {
       }
       ctx.fn = ctxFunctions
 
-      ctx.const = {
-        ...(this.context.const || {}),
-        ...this.constants
+      const ctxConstants = this.const
+      if (this.context.const) {
+        for (const constKey in this.context.const) {
+          if (!ctxConstants[constKey]) ctxConstants[constKey] = this.context.const[constKey]
+        }
       }
+      ctx.const = ctxConstants
 
       if (typeof ctx.ctxVars !== 'object') ctx.ctxVars = {}
       ctx.ctxVars[this.varScope] = this.localCtxVars
 
       return ctx
+    },
+    collectMissingItems(evaluateDefaults) {
+      const accessedItems = new Set()
+      const trackingStore = new Proxy(this.context.store, {
+        get(target, prop) {
+          if (typeof prop === 'string') accessedItems.add(prop)
+          return target[prop]
+        }
+      })
+      evaluateDefaults({ ...this.context, store: trackingStore })
+
+      return Array.from(accessedItems).filter((itemName) => !this.statesStore.itemStates.has(itemName))
     }
+  },
+  beforeMount() {
+    const evaluateDefaults = (evaluationContext = this.context) => {
+      if (!this.context?.component?.config) return
+
+      this.const = {}
+      const sourceConst = this.context.component.config.constants || {}
+      if (sourceConst) {
+        if (typeof sourceConst !== 'object') return
+        for (const key in sourceConst) {
+          this.const[key] = this.evaluateExpression(key, sourceConst[key], evaluationContext)
+        }
+      }
+
+      this.localCtxVars = {}
+      const sourceCtxVars = this.context.component.config.variables || {}
+      if (sourceCtxVars) {
+        if (typeof sourceCtxVars !== 'object') return
+        for (const key in sourceCtxVars) {
+          this.localCtxVars[key] = this.evaluateExpression(key, sourceCtxVars[key], evaluationContext)
+        }
+      }
+    }
+
+    const missingItems = this.collectMissingItems(evaluateDefaults)
+    if (missingItems.length === 0) return
+
+    let stop = null
+    stop = watch(
+      () => missingItems.every((itemName) => this.statesStore.itemStates.has(itemName)),
+      (ready) => {
+        if (!ready) return
+        evaluateDefaults()
+        void nextTick(() => {
+          if (stop) stop()
+        })
+      },
+      { immediate: true }
+    )
   }
 }
 </script>
