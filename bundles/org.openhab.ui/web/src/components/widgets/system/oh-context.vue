@@ -26,6 +26,12 @@ export default {
     const statesStore = useStatesStore()
     return { varScope, childContext, evaluateExpression, defaultSlots, statesStore }
   },
+  data() {
+    return {
+      const: {},
+      localCtxVars: {}
+    }
+  },
   computed: {
     fn() {
       if (!this.context?.component?.config) return {}
@@ -53,13 +59,10 @@ export default {
       }
       ctx.fn = ctxFunctions
 
-      const ctxConstants = this.const
-      if (this.context.const) {
-        for (const constKey in this.context.const) {
-          if (!ctxConstants[constKey]) ctxConstants[constKey] = this.context.const[constKey]
-        }
+      ctx.const = {
+        ...(this.context.const || {}),
+        ...this.const
       }
-      ctx.const = ctxConstants
 
       if (typeof ctx.ctxVars !== 'object') ctx.ctxVars = {}
       ctx.ctxVars[this.varScope] = this.localCtxVars
