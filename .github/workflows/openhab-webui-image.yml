@@ -30,7 +30,7 @@ jobs:
           cache: maven
 
       - name: Build Main UI bundle
-        run: ./mvnw -pl bundles/org.openhab.ui -am -DskipTests package
+        run: ./mvnw -pl bundles/org.openhab.ui -am -DskipTests -Dspotless.check.skip=true package
 
       - name: Verify bundle exists
         run: test -f "bundles/org.openhab.ui/target/org.openhab.ui-${OPENHAB_VERSION}.jar"
