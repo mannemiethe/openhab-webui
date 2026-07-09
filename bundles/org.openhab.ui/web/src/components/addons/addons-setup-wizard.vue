@@ -1,31 +1,24 @@
 <template>
   <div style="width: 100%">
-    <f7-row v-if="enableAddonSelection">
-      <f7-col width="100">
-        <f7-button ref="selectAddons"
-                   large
-                   icon-f7="bag_fill_badge_plus"
-                   icon-size="24"
-                   @click="selectAddons"
-                   :text="t('setupwizard.addons.selectAddons')" />
-      </f7-col>
-    </f7-row>
-    <f7-list media-list>
-      <f7-list-item v-for="addon in shownAddons" :key="addon.uid" class="addons-setup-wizard">
+    <f7-list media-list style="margin-top: 0">
+      <f7-list-item v-for="addon in shownAddons" :key="addon.uid" class="addons-setup-wizard" @click="toggleAddonSelection(addon)">
         <f7-block class="addon display-flex flex-direction-column">
           <f7-row no-gap>
             <div style="width: 100%">
-              <f7-checkbox style="margin-right: 0.5rem"
-                           :checked="selectedAddon(addon) ? true : null"
-                           :disabled="addon.installed ? true : null"
-                           @change="toggleAddonSelection(addon, $event)" />
+              <f7-checkbox
+                :key="selectedAddons.length"
+                style="margin-right: 0.5rem"
+                :checked="isAddonSelected(addon)"
+                :disabled="addon.installed" />
               {{ addon.label }}
-              <f7-link style="float: right"
-                       icon-f7="doc_text_search"
-                       :external="true"
-                       color="gray"
-                       target="_blank"
-                       :href="addon.link" />
+              <f7-link
+                style="float: right"
+                icon-f7="doc_text_search"
+                :external="true"
+                color="gray"
+                target="_blank"
+                :href="addon.link"
+                @click.stop />
             </div>
           </f7-row>
           <f7-row no-gap style="margin-top: 0.5rem; margin-bottom: 0">
@@ -37,11 +30,56 @@
         </f7-block>
       </f7-list-item>
     </f7-list>
+    <f7-row v-if="enableAddonSelection">
+      <f7-col width="100">
+        <f7-button
+          large
+          icon-f7="bag_fill_badge_plus"
+          icon-size="24"
+          @click="openAddonSelectionModal"
+          :text="t('setupwizard.' + type + '.selectAddons')" />
+      </f7-col>
+    </f7-row>
+
+    <!-- Addon Selection Modal -->
+    <f7-popup v-if="enableAddonSelection" :opened="showAddonSelectionModal" @popup:closed="closeAddonSelectionModal">
+      <f7-page>
+        <f7-navbar>
+          <f7-nav-left>
+            <f7-link popup-close :text="t('dialogs.close')" />
+          </f7-nav-left>
+          <f7-nav-title :title="t('setupwizard.' + type + '.selectAddons')" />
+        </f7-navbar>
+        <f7-searchbar
+          v-model:value="addonSearchQuery"
+          :placeholder="t('setupwizard.' + type + '.selectAddons.placeholder')"
+          :disable-button-text="t('dialogs.cancel')" />
+        <f7-list media-list class="addon-selection-list">
+          <f7-list-item
+            v-for="addon in filterableAddons"
+            :key="addon.uid"
+            :checkbox="true"
+            :checked="isAddonSelected(addon)"
+            :disabled="addon.installed"
+            @change="toggleAddonSelection(addon, $event)"
+            class="addon-selection-item">
+            <template #media>
+              <addon-logo class="selection-logo" :addon="addon" size="40" />
+            </template>
+            <div class="addon-selection-label">
+              <div class="addon-selection-title">{{ addon.label }}</div>
+              <span class="addon-selection-description" v-html="addonDescription(addon)" />
+            </div>
+          </f7-list-item>
+        </f7-list>
+      </f7-page>
+    </f7-popup>
   </div>
 </template>
 
 <style lang="stylus">
 .addons-setup-wizard
+  cursor pointer
   .addon
     margin-top: 0.5rem
     margin-bottom: 0.5rem
@@ -50,6 +88,7 @@
       width 100%
       display flex
       .logo-square
+        flex-shrink 0
         background white
         border-radius 10%
         width 64px
@@ -63,38 +102,82 @@
           max-height 54px
           max-width 54px
       .text
-        margin-left 0.5rem
+        margin-left 1rem
         max-width calc(100% - 64px - 0.5rem)
+
+.addon-selection-list.media-list .addon-selection-item
+  label.item-checkbox.item-content
+    align-items flex-start
+    .icon-checkbox
+      margin-top calc(0.3rem + 22px)
+      align-self flex-start
+  .item-media
+    align-self flex-start
+    margin-top 0.3rem
+    .selection-logo
+      flex-shrink 0
+      background white
+      border-radius 10%
+      width 48px
+      height 48px
+      display flex
+      justify-content center
+      align-items center
+      .logo
+        margin-left 0
+        max-height 40px
+        max-width 40px
+  .item-inner
+    .addon-selection-label
+      .addon-selection-title
+        font-weight 500
+      .addon-selection-description
+        font-size 0.9em
+        color #999
 </style>
 
 <script>
-import { f7 } from 'framework7-vue'
 import AddonLogo from '@/components/addons/addon-logo.vue'
-
-import { useI18n } from 'vue-i18n'
-import { loadLocaleMessages } from '@/js/i18n'
 
 export default {
   props: {
     addons: Array,
+    type: String,
     preSelectedAddons: Array,
-    enableAddonSelection: Boolean
+    selectedAddons: Array,
+    enableAddonSelection: Boolean,
+    t: Function
   },
-  emits: ['update'],
+  emits: ['added', 'removed'],
   components: {
     AddonLogo
   },
-  setup () {
-    const { t, mergeLocaleMessage } = useI18n({ useScope: 'local' })
-    loadLocaleMessages('setup-wizard', mergeLocaleMessage)
+  data() {
     return {
-      t
+      shownAddons: [...(this.preSelectedAddons || [])],
+      modalShownAddons: this.addons?.filter((a) => !a.installed && !this.isPreSelectedAddon(a)) || [],
+      showAddonSelectionModal: false,
+      addonSearchQuery: ''
     }
   },
-  data () {
-    return {
-      shownAddons: [],
-      selectedAddons: []
+  computed: {
+    /**
+     * Returns addons available for selection (excluding installed and pre-selected).
+     * Filtered by search query if present.
+     */
+    filterableAddons() {
+      const available = this.modalShownAddons
+      if (!this.addonSearchQuery) {
+        return available
+      }
+      const query = this.addonSearchQuery.toLowerCase()
+      return available.filter((a) => {
+        if (a.label.toLowerCase().includes(query) || a.uid.toLowerCase().includes(query)) return true
+        if (a.keywords.toLowerCase().includes(query)) return true
+        const descrHtml = this.addonDescription(a)
+        const descrText = descrHtml.replace(/<[^>]+>/g, ' ').toLowerCase()
+        return descrText.includes(query)
+      })
     }
   },
   methods: {
@@ -103,7 +186,7 @@ export default {
      * @param addon
      * @returns {boolean}
      */
-    selectedAddon (addon) {
+    isAddonSelected(addon) {
       return this.selectedAddons.includes(addon)
     },
     /**
@@ -111,7 +194,8 @@ export default {
      * @param addon
      * @returns {boolean}
      */
-    preSelectedAddon (addon) {
+    isPreSelectedAddon(addon) {
+      if (!this.preSelectedAddons) return false
       return this.preSelectedAddons.includes(addon)
     },
     /**
@@ -119,7 +203,7 @@ export default {
      * @param addon
      * @returns {string}
      */
-    addonDescription (addon) {
+    addonDescription(addon) {
       const line1 = this.t('setupwizard.addon.' + addon.uid + '.line1')
       const line2 = this.t('setupwizard.addon.' + addon.uid + '.line2')
       const hasLine1 = line1 !== 'setupwizard.addon.' + addon.uid + '.line1'
@@ -129,86 +213,32 @@ export default {
     },
     /**
      * Toggles the selection of a single add-on.
-     * To be called by the change event of the <code>f7-checkbox</code> component.
      * @param addon
-     * @param event
      */
-    toggleAddonSelection (addon, event) {
-      if (event.target.checked) {
-        this.selectedAddons.push(addon)
+    toggleAddonSelection(addon) {
+      if (addon.installed) return
+      if (this.isAddonSelected(addon)) {
+        this.$emit('removed', addon)
       } else {
-        this.selectedAddons = this.selectedAddons.filter((a) => a.uid !== addon.uid)
-      }
-      this.$emit('update', this.selectedAddons)
-    },
-    /**
-     * Opens the add-on selection popup.
-     */
-    selectAddons () {
-      if (this.autocompleteAddons) {
-        this.autocompleteAddons.value = this.selectedAddons.map((a) => a.label)
-        this.autocompleteAddons.open()
+        this.$emit('added', addon)
+        if (!this.shownAddons.includes(addon)) {
+          this.shownAddons.push(addon)
+        }
       }
     },
     /**
-     * Updates the list of selected add-ons.
-     * To be called by change event of the selection popup.
-     * @param newSelected
+     * Opens the add-on selection modal.
      */
-    updateAddonSelection (newSelected) {
-      this.selectedAddons = newSelected
-      this.$emit('update', this.selectedAddons)
+    openAddonSelectionModal() {
+      this.showAddonSelectionModal = true
+    },
+    /**
+     * Closes the add-on selection modal.
+     */
+    closeAddonSelectionModal() {
+      this.showAddonSelectionModal = false
+      this.addonSearchQuery = ''
     }
-  },
-  mounted () {
-    // Update the list of shown and selected add-ons with the pre-selected add-ons.
-    // Exclude add-ons that are in the list of pre-selected add-ons, but are not meant to be shown here (usually because these add-ons are handled in a separate step).
-    if (Array.isArray(this.preSelectedAddons)) {
-      this.shownAddons = this.selectedAddons = this.preSelectedAddons.filter((a) => this.addons.includes(a))
-    }
-
-    // Initialize the autocomplete, which provides the add-on selection popup, if add-on selection has been enabled.
-    if (!this.enableAddonSelection) return
-    this.autocompleteAddons = f7.autocomplete.create({
-      openIn: 'popup',
-      pageTitle: this.t('setupwizard.addons.selectAddons'),
-      searchbarPlaceholder: this.t('setupwizard.addons.selectAddons.placeholder'),
-      openerEl: this.$refs.selectAddons,
-      multiple: true,
-      requestSourceOnOpen: true,
-      source: (query, render) => {
-        // Exclude installed and pre-selected add-ons from the selection popup.
-        if (query.length === 0) {
-          render(self.addons.filter((a) => !a.installed && !self.preSelectedAddon(a)).map((a) => a.label))
-        } else {
-          render(
-            self.addons
-              .filter(
-                (a) => !a.installed && !self.preSelectedAddon(a) && (a.label.toLowerCase().indexOf(query.toLowerCase()) >= 0 || a.uid.toLowerCase().indexOf(query.toLowerCase()) >= 0))
-              .map((a) => a.label))
-        }
-      },
-      on: {
-        change (value) {
-          const selected = value.map((label) => self.addons.find((a) => a.label === label))
-          // If we added addons, keep them visible on the main list, even if we deselect them again later.
-          self.shownAddons = [...new Set(self.selectedAddons.concat(selected))]
-          self.updateAddonSelection(selected)
-        }
-      }
-    })
-
-    // Add event listener for locale change
-    f7.on('localeChange', () => {
-      if (this.autocompleteAddons) {
-        this.autocompleteAddons.params.pageTitle = this.t('setupwizard.addons.selectAddons')
-        this.autocompleteAddons.params.searchbarPlaceholder = this.t('setupwizard.addons.selectAddons.placeholder')
-        this.autocompleteAddons.params.searchbarDisableText = this.t('dialogs.cancel')
-        this.autocompleteAddons.params.popupCloseLinkText = this.t('dialogs.close')
-        this.autocompleteAddons.params.pageBackLinkText = this.t('dialogs.back')
-        this.autocompleteAddons.params.notFoundText = this.t('dialogs.search.nothingFound')
-      }
-    })
   }
 }
 </script>

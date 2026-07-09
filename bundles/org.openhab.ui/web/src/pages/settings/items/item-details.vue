@@ -1,47 +1,39 @@
 <template>
   <!-- page-with-subnavbar class required on Android -->
-  <f7-page class="item-details-page page-with-subnavbar"
-           @page:beforein="onPageBeforeIn"
-           @page:beforeout="onPageBeforeOut">
+  <f7-page class="item-details-page page-with-subnavbar" @page:beforein="onPageBeforeIn" @page:beforeout="onPageBeforeOut">
     <f7-navbar>
-      <oh-nav-content v-if="ready"
-                      :title="item.name"
-                      :f7router>
+      <oh-nav-content v-if="ready" :title="item.name" :f7router>
         <template v-if="ready" #right>
-          <f7-link v-if="item.editable"
-                   icon-md="material:edit"
-                   href="edit">
+          <f7-link v-if="item.editable" icon-md="material:edit" href="edit">
             {{ theme.md ? '' : 'Edit' }}
           </f7-link>
-          <f7-link v-else
-                   icon-f7="lock_fill"
-                   tooltip="This Item is not editable through the UI"
-                   href="edit">
+          <f7-link v-else icon-f7="lock_fill" tooltip="This Item is not editable through the UI" href="edit">
             {{ theme.md ? '' : 'View' }}
           </f7-link>
         </template>
         <template #after>
           <f7-subnavbar class="item-header">
-            <div class="item-icon" v-if="item.name">
-              <oh-icon v-if="item.category"
-                       :icon="item.category"
-                       :state="item.type === 'Image' ? null : (context.store[item.name].state || item.state)"
-                       height="60"
-                       width="60" />
+            <div v-if="item.name" class="item-icon">
+              <oh-icon
+                v-if="item.category"
+                :icon="item.category"
+                :state="item.type === 'Image' ? null : context.store[item.name].state || item.state"
+                height="60"
+                width="60" />
               <span v-else>
                 {{ item.label ? item.label[0] : item.name[0] }}
               </span>
             </div>
             <h2>{{ item.label }}</h2>
             <!-- <h4 v-show="item.label">{{item.name}}</h4> -->
-            <h5 v-show="item.type" style="margin-top: 10px; margin-bottom: 15px;">
+            <h5 v-show="item.type" style="margin-top: 10px; margin-bottom: 15px">
               <small>{{ getItemTypeLabel(item) }}</small>
             </h5>
           </f7-subnavbar>
         </template>
       </oh-nav-content>
     </f7-navbar>
-    <f7-block class="block-narrow after-item-header" v-if="item">
+    <f7-block v-if="item" class="block-narrow after-item-header">
       <f7-row v-if="item.state">
         <f7-col>
           <item-state-preview :item="item" :context="context" />
@@ -51,10 +43,7 @@
         <f7-col>
           <f7-block-title>Non-Semantic Tags</f7-block-title>
           <f7-block strong class="tags-block">
-            <f7-chip v-for="tag in nonSemanticTags"
-                     :key="tag"
-                     :text="tag"
-                     media-bg-color="blue">
+            <f7-chip v-for="tag in nonSemanticTags" :key="tag" :text="tag" media-bg-color="blue">
               <template #media>
                 <f7-icon ios="f7:tag_fill" md="material:label" aurora="f7:tag_fill" />
               </template>
@@ -66,12 +55,13 @@
         <f7-col>
           <f7-block-title>Semantic Model</f7-block-title>
           <f7-card>
-            <model-treeview class="model-treeview no-selection-style"
-                            :rootNodes="rootElements"
-                            :includeItemName="true"
-                            :includeItemTags="true"
-                            :selected="modelItem(item)"
-                            @selected="navigateToItem" />
+            <model-treeview
+              class="model-treeview no-selection-style"
+              :rootNodes="rootElements"
+              :includeItemName="true"
+              :includeItemTags="true"
+              :selected="modelItem(item)"
+              @selected="navigateToItem" />
           </f7-card>
         </f7-col>
       </f7-row>
@@ -81,11 +71,7 @@
           <f7-card>
             <f7-list>
               <ul>
-                <item v-for="group in itemGroups"
-                      :key="group.name"
-                      :item="group"
-                      :link="itemLink(group.name)"
-                      :context="context" />
+                <item v-for="group in itemGroups" :key="group.name" :item="group" :link="itemLink(group.name)" :context="context" />
               </ul>
             </f7-list>
           </f7-card>
@@ -94,9 +80,7 @@
       <f7-row v-if="item?.type === 'Group'">
         <f7-col>
           <f7-block-title>Members</f7-block-title>
-          <group-members :group-item="item"
-                         :context="context"
-                         @updated="load" />
+          <group-members :group-item="item" :context="context" @updated="load" />
         </f7-col>
       </f7-row>
       <f7-row v-if="item.name">
@@ -111,25 +95,24 @@
           <link-details :item="item" :links="links" :f7router />
         </f7-col>
       </f7-row>
+      <f7-row v-if="item.name && (item.type !== 'Group' || item.groupType)">
+        <f7-col>
+          <f7-block-title>Persistence</f7-block-title>
+          <item-persistence-details :item="item" :f7router />
+        </f7-col>
+      </f7-row>
       <f7-row>
         <f7-col>
           <f7-list>
-            <f7-list-button color="blue" @click="duplicateItem">
-              Duplicate Item
-            </f7-list-button>
+            <f7-list-button color="blue" @click="duplicateItem"> Duplicate Item </f7-list-button>
             <f7-list-button color="blue" @click="copyFileDefinitionToClipboard(ObjectType.ITEM, [item.name])">
               Copy File Definition
             </f7-list-button>
-            <f7-list-button v-if="item.editable"
-                            color="red"
-                            @click="deleteItem">
-              Remove Item
-            </f7-list-button>
+            <f7-list-button v-if="item.editable" color="red" @click="deleteItem"> Remove Item </f7-list-button>
           </f7-list>
           <p class="developer-sidebar-tip text-align-center">
             Tip: Use the developer sidebar (Shift+Alt+D) to
-            <f7-link text="search for usages of this Item"
-                     @click="searchInSidebar" />
+            <f7-link text="search for usages of this Item" @click="searchInSidebar" />
           </p>
         </f7-col>
       </f7-row>
@@ -201,6 +184,7 @@
 import Item from '@/components/item/item.vue'
 import ItemStatePreview from '@/components/item/item-state-preview.vue'
 import LinkDetails from '@/components/model/link-details.vue'
+import ItemPersistenceDetails from '@/components/persistence/item-persistence-details.vue'
 import GroupMembers from '@/components/item/group-members.vue'
 import MetadataMenu from '@/components/item/metadata/item-metadata-menu.vue'
 import ModelTreeview from '@/components/model/model-treeview.vue'
@@ -223,10 +207,10 @@ export default {
     itemName: String,
     f7router: Object
   },
-  setup () {
+  setup() {
     return { theme, utils }
   },
-  data () {
+  data() {
     return {
       item: {},
       links: [],
@@ -234,30 +218,36 @@ export default {
     }
   },
   computed: {
-    context () {
+    context() {
       return {
         store: useStatesStore().trackedItems
       }
     },
-    nonSemanticTags () {
-      return this.item?.tags?.filter((tag) => tag !== this.semanticTag(this.item?.metadata?.semantics?.value) && tag !== this.semanticTag(this.item?.metadata?.semantics?.config?.relatesTo)) || []
+    nonSemanticTags() {
+      return (
+        this.item?.tags?.filter(
+          (tag) =>
+            tag !== this.semanticTag(this.item?.metadata?.semantics?.value) &&
+            tag !== this.semanticTag(this.item?.metadata?.semantics?.config?.relatesTo)
+        ) || []
+      )
     },
-    itemGroups () {
+    itemGroups() {
       return this.item?.parents?.toSorted((a, b) => (a.label || a.name).localeCompare(b.label || b.name))
     }
   },
   methods: {
-    onPageBeforeIn () {
+    onPageBeforeIn() {
       this.load()
     },
-    onPageBeforeOut () {
+    onPageBeforeOut() {
       useStatesStore().stopTrackingStates()
     },
-    modelItem (item) {
+    modelItem(item) {
       return {
         item,
         opened: false,
-        class: (item.metadata && item.metadata.semantics) ? item.metadata.semantics.value : '',
+        class: item.metadata && item.metadata.semantics ? item.metadata.semantics.value : '',
         children: {
           locations: [],
           equipment: [],
@@ -267,7 +257,7 @@ export default {
         }
       }
     },
-    async load () {
+    async load() {
       this.$oh.api.get(`/rest/items/${this.itemName}?parents=true&metadata=.+`).then((data) => {
         this.item = data
         this.iconUrl = '/icon/' + this.item.category + '?format=svg'
@@ -278,34 +268,33 @@ export default {
         useStatesStore().startTrackingStates()
       })
     },
-    duplicateItem () {
+    duplicateItem() {
       let itemClone = cloneDeep(this.item)
-      this.f7router.navigate({
-        url: '/settings/items/duplicate'
-      }, {
-        props: {
-          itemCopy: itemClone
-        }
-      })
-    },
-    deleteItem () {
-      f7.dialog.confirm(
-        `Are you sure you want to delete ${this.item.label || this.item.name}?`,
-        'Delete Item',
-        () => {
-          this.$oh.api.delete('/rest/items/' + this.item.name).then(() => {
-            this.f7router.back('/settings/items/', { force: true })
-          })
+      this.f7router.navigate(
+        {
+          url: '/settings/items/duplicate'
+        },
+        {
+          props: {
+            itemCopy: itemClone
+          }
         }
       )
     },
-    searchInSidebar () {
-      f7.emit('selectDeveloperDock', { 'dock': 'tools', 'toolTab': 'pin', 'searchFor': this.item.name })
+    deleteItem() {
+      f7.dialog.confirm(`Are you sure you want to delete ${this.item.label || this.item.name}?`, 'Delete Item', () => {
+        this.$oh.api.delete('/rest/items/' + this.item.name).then(() => {
+          this.f7router.navigate('/settings/items/')
+        })
+      })
     },
-    navigateToItem (value) {
+    searchInSidebar() {
+      f7.emit('selectDeveloperDock', { dock: 'tools', toolTab: 'pin', searchFor: this.item.name })
+    },
+    navigateToItem(value) {
       this.f7router.navigate(this.itemLink(value.item.name))
     },
-    itemLink (item) {
+    itemLink(item) {
       return '/settings/items/' + item
     },
     /**
@@ -314,7 +303,7 @@ export default {
      * @param {string|null} value
      * @return {*|null}
      */
-    semanticTag (value) {
+    semanticTag(value) {
       if (!value) return null
       const valueArray = value.split('_')
       if (valueArray.length === 0) return null

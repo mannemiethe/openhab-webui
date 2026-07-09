@@ -1,50 +1,49 @@
 <template>
-  <f7-page @page:afterin="onPageAfterIn" @page:beforeout="onPageBeforeOut" class="plan-editor">
+  <f7-page ref="plan-edit-page" @page:afterin="onPageAfterIn" @page:beforeout="onPageBeforeOut" class="plan-editor">
     <f7-navbar no-hairline>
-      <oh-nav-content :title="!ready ? '' : ((createMode ? 'Create plan page' : page.config.label) + dirtyIndicator)"
-                      :save-link="`Save${$device.desktop ? ' (Ctrl-S)' : ''}`"
-                      @save="save()"
-                      :f7router />
+      <oh-nav-content
+        :title="!ready ? '' : (createMode ? 'Create plan page' : page.config.label) + dirtyIndicator"
+        :editable="isEditable"
+        :save-link="`Save${$device.desktop ? ' (Ctrl-S)' : ''}`"
+        @save="save()"
+        :f7router />
     </f7-navbar>
     <f7-toolbar tabbar position="top">
-      <f7-link @click="switchTab('design', fromYaml)" :tab-link-active="currentTab === 'design'" tab-link="#design">
-        Design
-      </f7-link>
-      <f7-link @click="switchTab('code', toYaml)" :tab-link-active="currentTab === 'code'" tab-link="#code">
-        Code
-      </f7-link>
+      <f7-link @click="switchTab('design', fromYaml)" :tab-link-active="currentTab === 'design'" tab-link="#design"> Design </f7-link>
+      <f7-link @click="switchTab('code', toYaml)" :tab-link-active="currentTab === 'code'" tab-link="#code"> Code </f7-link>
     </f7-toolbar>
     <f7-toolbar bottom class="toolbar-details">
       <div style="margin-left: auto">
-        <f7-toggle :checked="previewMode ? true : null" @toggle:change="(value) => togglePreviewMode(value)" /> Run mode<span v-if="$device.desktop">&nbsp;(Ctrl-R)</span>
+        <f7-toggle :checked="previewMode ? true : null" @toggle:change="(value) => togglePreviewMode(value)" /> Run mode<span
+          v-if="$device.desktop"
+          >&nbsp;(Ctrl-R)</span
+        >
       </div>
     </f7-toolbar>
 
     <f7-tabs class="plan-editor-tabs">
-      <f7-tab id="design"
-              class="plan-editor-design-tab"
-              :tab-active="currentTab === 'design'">
+      <f7-tab id="design" class="plan-editor-design-tab" :tab-active="currentTab === 'design'">
         <f7-block v-if="!ready" class="text-align-center">
           <f7-preloader />
           <div>Loading...</div>
         </f7-block>
-        <f7-block class="block-narrow" v-if="ready && !previewMode">
-          <page-settings :page="page" :createMode="createMode" :f7router />
+        <f7-block v-if="ready && !previewMode" class="block-narrow">
+          <not-editable-notice v-if="!isEditable" />
+          <page-settings :page="page" :createMode="createMode" :readOnly="!isEditable" :f7router />
         </f7-block>
 
-        <f7-block class="block-narrow" style="padding-bottom: 8rem" v-if="ready && !previewMode">
+        <f7-block v-if="ready && !previewMode" class="block-narrow" style="padding-bottom: 8rem">
           <f7-col>
             <f7-block-title>Background Configuration</f7-block-title>
             <config-sheet
               :parameterGroups="pageWidgetDefinition.props.parameterGroups || []"
               :parameters="pageWidgetDefinition.props.parameters || []"
               :configuration="page.config"
+              :readOnly="!isEditable"
               :f7router
               @updated="dirty = true" />
 
-            <f7-block-title class="padding-bottom">
-              Markers
-            </f7-block-title>
+            <f7-block-title class="padding-bottom"> Markers </f7-block-title>
             <f7-menu v-if="clipboardType === 'oh-plan-marker'" class="padding-bottom">
               <f7-menu-item style="margin-left: auto" icon-f7="square_on_square" dropdown>
                 <f7-menu-dropdown right>
@@ -54,24 +53,22 @@
             </f7-menu>
 
             <f7-list media-list class="markers-list">
-              <f7-list-item v-for="(marker, idx) in page.slots.default"
-                            media-item
-                            :key="idx"
-                            :title="marker.config.name"
-                            :subtitle="marker.config.item || marker.config.location"
-                            link="#"
-                            @click="(ev) => configureMarker(ev, marker, context)">
+              <f7-list-item
+                v-for="(marker, idx) in page.slots.default"
+                media-item
+                :key="idx"
+                :title="marker.config.name"
+                :subtitle="marker.config.item || marker.config.location"
+                link="#"
+                @click="(ev) => configureMarker(ev, marker, context)">
                 <template #media>
-                  <oh-icon v-if="marker.config.icon"
-                           :icon="marker.config.icon"
-                           height="32"
-                           width="32" />
+                  <oh-icon v-if="markerIcon(marker)" :icon="markerIcon(marker)" height="32" width="32" />
                 </template>
                 <template #content-start>
-                  <f7-menu class="configure-layout-menu">
+                  <f7-menu v-if="isEditable" class="configure-layout-menu">
                     <f7-menu-item icon-f7="list_bullet" dropdown>
                       <f7-menu-dropdown>
-                        <f7-menu-dropdown-item @click="configureWidget(marker, { component: page })" href="#" text="Configure marker" />
+                        <f7-menu-dropdown-item @click="configureWidget(marker, { component: page })" href="#" text="Marker Settings" />
                         <f7-menu-dropdown-item @click="editWidgetCode(marker, { component: page })" href="#" text="Edit YAML" />
                         <f7-menu-dropdown-item divider />
                         <f7-menu-dropdown-item @click="cutWidget(marker, { component: page })" href="#" text="Cut" />
@@ -86,45 +83,39 @@
                   </f7-menu>
                 </template>
               </f7-list-item>
-              <f7-list-button color="blue" title="Add marker" @click="addWidget(page, 'oh-plan-marker')" />
+              <f7-list-button v-if="isEditable" color="blue" title="Add marker" @click="addWidget(page, 'oh-plan-marker')" />
             </f7-list>
-            <f7-block-footer class="param-description">
+            <f7-block-footer v-if="isEditable" class="param-description">
               You can also
-              <f7-link style="z-index: inherit" href="#" @click="previewMode = true">
-                switch to Run mode
-              </f7-link>
-              to add markers and position them on the plan.
+              <f7-link style="z-index: inherit" href="#" @click="previewMode = true"> switch to Run mode </f7-link>
+              to add markers and position them on the plan. When SVG Embedding is enabled, click an interactive SVG element (one with an
+              <code>openhab</code> attribute) in Run mode to configure its state and action.
             </f7-block-footer>
           </f7-col>
         </f7-block>
-
-        <oh-plan-page v-else-if="ready && previewMode"
-                      class="plan-page"
-                      :context="context"
-                      :key="pageKey" />
       </f7-tab>
 
       <f7-tab id="code" :tab-active="currentTab === 'code'">
-        <editor v-if="currentTab === 'code'"
-                :style="{ opacity: previewMode ? '0' : '' }"
-                class="page-code-editor"
-                mode="application/vnd.openhab.uicomponent+yaml;type=plan"
-                :value="pageYaml"
-                @input="onEditorInput" />
+        <editor
+          v-if="currentTab === 'code'"
+          :style="{ opacity: previewMode ? '0' : '' }"
+          class="page-code-editor"
+          mode="application/vnd.openhab.uicomponent+yaml;type=plan"
+          :value="pageYaml"
+          :readOnly="!isEditable"
+          @input="onEditorInput"
+          @save="save()" />
         <!-- <pre class="yaml-message padding-horizontal" :class="[yamlError === 'OK' ? 'text-color-green' : 'text-color-red']">{{yamlError}}</pre> -->
-
-        <oh-plan-page v-if="ready && previewMode"
-                      class="plan-page"
-                      :context="context"
-                      :key="pageKey + '2'" />
       </f7-tab>
     </f7-tabs>
+
+    <oh-plan-page v-if="ready && previewMode" class="plan-page" :context="context" :f7router :key="pageKey" />
   </f7-page>
 </template>
 
 <style lang="stylus">
 .plan-editor
-  .page-code-editor.v-codemirror
+  .code-editor-fit.page-code-editor
     position absolute
     height calc(100% - var(--f7-navbar-height) - 2*var(--f7-toolbar-height))
   .yaml-message
@@ -132,10 +123,9 @@
     position absolute
     top 80%
     white-space pre-wrap
-  .plan-editor
-    .oh-plan-page-lmap
-      top calc(var(--f7-navbar-height) + var(--f7-toolbar-height)) !important
-      height calc(100% - var(--f7-navbar-height) - 2 * var(--f7-toolbar-height)) !important
+  .oh-plan-page-lmap
+    top calc(var(--f7-safe-area-top) + var(--f7-navbar-height) + var(--f7-toolbar-height)) !important
+    height calc(100% - var(--f7-safe-area-top) - var(--f7-navbar-height) - 2 * var(--f7-toolbar-height)) !important
   .markers-list
     .item-link
       overflow inherit
@@ -143,12 +133,12 @@
 </style>
 
 <script>
-import { defineAsyncComponent, provide } from 'vue'
-import { f7, theme } from 'framework7-vue'
+import { defineAsyncComponent } from 'vue'
+import { f7 } from 'framework7-vue'
 
 import PageDesigner from '../pagedesigner-mixin'
-
-import YAML from 'yaml'
+import { resolveDefaultProps } from '../defaultProps'
+import { toFileYAMLSyntax, fromFileYAMLSyntax } from '@/pages/yaml-file-format'
 
 import OhPlanPage from '@/components/widgets/plan/oh-plan-page.vue'
 import OhPlanMarker from '@/components/widgets/plan/oh-plan-marker.vue'
@@ -158,9 +148,13 @@ const ConfigurableWidgets = {
 }
 
 import PageSettings from '@/components/pagedesigner/page-settings.vue'
+import NotEditableNotice from '@/components/util/not-editable-notice.vue'
 
 import ConfigSheet from '@/components/config/config-sheet.vue'
-import { useViewArea } from '@/composables/useViewArea.ts'
+import { useViewArea } from '@/js/composables/useViewArea.ts'
+import { useWidgetExpression } from '@/components/widgets/useWidgetExpression.ts'
+import { useDirty } from '@/pages/useDirty'
+import { useTabs } from '@/pages/useTabs'
 
 export default {
   mixins: [PageDesigner],
@@ -168,20 +162,31 @@ export default {
     editor: defineAsyncComponent(() => import(/* webpackChunkName: "script-editor" */ '@/components/config/controls/script-editor.vue')),
     OhPlanPage,
     PageSettings,
+    NotEditableNotice,
     ConfigSheet
   },
   props: {
     createMode: Boolean,
+    pageCopy: Object,
     uid: String,
     f7router: Object,
     f7route: Object
   },
-  setup () {
+  setup() {
     useViewArea()
+    const { evaluateExpression } = useWidgetExpression()
+    const { dirty, dirtyIndicator } = useDirty('plan-edit-page')
+    const { currentTab, switchTab } = useTabs('design')
 
-    return { theme }
+    return { evaluateExpression, dirty, dirtyIndicator, currentTab, switchTab }
   },
-  data () {
+  created() {
+    f7.on('svgOnclickConfigUpdate', this.onSvgOnClickConfigUpdate)
+  },
+  beforeUnmount() {
+    f7.off('svgOnclickConfigUpdate', this.onSvgOnClickConfigUpdate)
+  },
+  data() {
     return {
       pageWidgetDefinition: OhPlanPage.widget(),
       forceEditMode: true,
@@ -195,14 +200,20 @@ export default {
     }
   },
   methods: {
-    markerDefaultIcon (marker) {
-      const widgetDefinition = Object.values(ConfigurableWidgets).find((c) => c.widget && typeof c.widget === 'function' && c.widget().name === marker.component)
-      if (widgetDefinition) {
-        return widgetDefinition.widget().icon
+    onSvgOnClickConfigUpdate(event) {
+      if (!this.page.config.embeddedSvgActions) {
+        this.page.config.embeddedSvgActions = {}
       }
-      return null
+      this.page.config.embeddedSvgActions[event.id] = event.config
+      this.dirty = true
     },
-    addWidget (component, widgetType, parentContext, slot) {
+    markerIcon(marker) {
+      if (!marker?.config?.icon) return null
+      const key = marker.component + '-' + marker.config.coords + ':icon'
+      return this.evaluateExpression(key, marker.config.icon, this.context)
+    },
+    addWidget(component, widgetType, parentContext, slot) {
+      if (!this.isEditable) return
       if (!slot) slot = 'default'
       if (!component.slots) component.slots = {}
       if (!component.slots[slot]) component.slots[slot] = []
@@ -217,31 +228,41 @@ export default {
         this.forceUpdate()
       }
     },
-    getWidgetDefinition (componentType) {
-      const component = Object.values(ConfigurableWidgets).find((w) => w.widget && typeof w.widget === 'function' && w.widget().name === componentType)
+    getWidgetDefinition(componentType) {
+      const component = Object.values(ConfigurableWidgets).find(
+        (w) => w.widget && typeof w.widget === 'function' && w.widget().name === componentType
+      )
       if (!component) return null
       return component.widget()
     },
-    configureMarker (ev, marker, context) {
+    configureMarker(ev, marker, context) {
       let el = ev.target
       ev.cancelBubble = true
       while (!el.classList.contains('media-item')) {
         if (el && el.classList.contains('menu')) return
         el = el.parentElement
       }
-      this.context.editmode.configureWidget(marker, context)
+      this.configureWidget(marker, context)
     },
-    toYaml () {
-      this.pageYaml = YAML.stringify({
-        config: this.page.config,
-        markers: this.page.slots.default
-      })
+    toYaml() {
+      this.pageYaml = toFileYAMLSyntax('pages', this.page)
     },
-    fromYaml () {
+    fromYaml() {
       try {
-        const updatedPage = YAML.parse(this.pageYaml)
+        const updatedPage = fromFileYAMLSyntax('pages', this.pageYaml, this.page.uid)
         this.page.config = updatedPage.config
-        this.page.slots.default = updatedPage.markers
+        this.page.tags = updatedPage.tags || []
+        this.page.props = resolveDefaultProps(updatedPage.props)
+        if (!updatedPage.slots) {
+          // maintain compatibility with older versions of the page schema
+          // where markers were directly on the page object instead of in a slots default property
+          // so that users can paste older YAML code without having to adjust the structure
+          this.page.slots = {
+            default: updatedPage.markers || []
+          }
+        } else {
+          this.page.slots = updatedPage.slots
+        }
         this.forceUpdate()
         return true
       } catch (e) {

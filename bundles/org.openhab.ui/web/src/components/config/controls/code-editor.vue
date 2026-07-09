@@ -1,13 +1,4 @@
 <template>
-  <f7-icon
-    v-if="readOnly"
-    f7="lock"
-    class="float-right margin"
-    style="opacity: 0.5; z-index: 4000; user-select: none;"
-    size="50"
-    color="gray"
-    :tooltip="readOnlyMsg" />
-
   <div class="code-editor">
     <editor
       ref="editor"
@@ -15,28 +6,43 @@
       :value="code"
       :hint-context="hintContext"
       :read-only="readOnly"
-      @input="onEditorInput" />
+      :read-only-msg="readOnlyMsg"
+      @input="onEditorInput"
+      @save="$emit('save')" />
   </div>
 
-  <f7-toolbar bottom class="code-editor-toolbar">
-    <f7-segmented>
-      <f7-button
-        v-for="type in Object.keys(mediaTypes)"
-        outline
-        small
-        :key="type"
-        :active="uiOptionsStore.codeEditorType === type"
-        @click="switchCodeType(type)">
-        {{ type }}
-      </f7-button>
-    </f7-segmented>
+  <f7-toolbar bottom :class="{ 'code-editor-toolbar': true, 'toolbar-narrow': $f7dim.width < 450 }">
+    <div class="toolbar-options display-flex flex-direction-row">
+      <f7-segmented>
+        <f7-button
+          v-for="type in Object.keys(mediaTypes)"
+          outline
+          small
+          :key="type"
+          :active="uiOptionsStore.codeEditorType === type"
+          :tooltip="`Show code as ${type}`"
+          @click="switchCodeType(type)">
+          {{ type }}
+        </f7-button>
+      </f7-segmented>
+      <f7-checkbox
+        v-if="showShowAllCheckbox"
+        class="opt-show-all display-flex text-color-blue"
+        v-model:checked="isShowAll"
+        @update:checked="switchShowAll">
+        <span>Show all</span>
+      </f7-checkbox>
+    </div>
+    <slot name="additional-panel-controls" />
     <f7-button
       @click="copy"
       icon-ios="f7:square_on_square"
       icon-aurora="f7:square_on_square"
+      icon-md="material:content_copy"
       color="blue"
+      tooltip="Copy code to clipboard"
       class="copy display-flex flex-direction-row">
-      &nbsp;Copy
+      <span class="button-label">Copy</span>
     </f7-button>
     <f7-button
       v-if="!readOnly"
@@ -44,9 +50,11 @@
       :disabled="!dirty"
       icon-ios="f7:arrow_2_circlepath"
       icon-aurora="f7:arrow_2_circlepath"
+      icon-md="material:undo"
       color="red"
+      tooltip="Revert local changes to the code"
       class="reset display-flex flex-direction-row">
-      &nbsp;Revert
+      <span class="button-label">Revert</span>
     </f7-button>
   </f7-toolbar>
 
@@ -60,9 +68,7 @@
     <f7-page>
       <f7-navbar title="Parse Errors" ref="navbar">
         <f7-nav-right>
-          <f7-link class="popup-close">
-            Close
-          </f7-link>
+          <f7-link class="popup-close"> Close </f7-link>
         </f7-nav-right>
       </f7-navbar>
 
@@ -76,17 +82,50 @@
 <style lang="stylus">
 .code-editor
   position absolute
-  top calc(var(--f7-navbar-height) + var(--f7-toolbar-height))
+  top calc(var(--f7-navbar-height) + var(--f7-toolbar-height) + var(--f7-safe-area-top))
   bottom calc(var(--f7-toolbar-height))
-  width 100%
+  left var(--f7-safe-area-left)
+  right var(--f7-safe-area-right)
 
 .code-editor-toolbar
   position absolute
   .toolbar-inner
-    padding-left 8px
+    padding-left calc(8px + var(--f7-safe-area-left))
+    .toolbar-options
+      align-items center
+      gap 8px
+      .opt-show-all
+        flex-wrap nowrap
+        align-items center
+        flex-direction row
+        span
+          white-space nowrap
+          padding-left 4px
   .segmented
     .button
-      width 5em
+      width auto
+  .button-label
+    margin-left 4px
+
+.code-editor-toolbar.toolbar-narrow
+  --f7-toolbar-height var(--f7-tabbar-labels-height);
+  font-size var(--f7-tabbar-label-font-size)
+  .button-label
+    display none
+  .toolbar-inner
+    padding-left 5px
+    .toolbar-options
+      gap 6px
+      .opt-show-all
+        flex-wrap nowrap
+        align-items center
+        flex-direction column
+        span
+          padding-left 0
+  .segmented
+    .button
+      padding-left 5px
+      padding-right 5px
 
 .code-editor-errors
   .item-title
@@ -102,28 +141,8 @@ import Editor from '@/components/config/controls/script-editor.vue'
 
 import MovablePopup from '@/pages/settings/movable-popup-mixin'
 import copyToClipboard from '@/js/clipboard'
-
-const MediaType = Object.freeze({
-  YAML: 'application/yaml',
-  THING_DSL: 'text/vnd.openhab.dsl.thing',
-  ITEM_DSL: 'text/vnd.openhab.dsl.item',
-  JSON: 'application/json'
-})
-
-const SupportedMediaTypes = {
-  items: {
-    YAML: MediaType.YAML,
-    DSL: MediaType.ITEM_DSL
-  },
-  things: {
-    YAML: MediaType.YAML,
-    DSL: MediaType.THING_DSL
-  }
-}
-
-const DefaultMediaTypes = {
-  YAML: MediaType.YAML
-}
+import { DefaultMediaTypes, MediaType, SupportedMediaTypes } from '@/assets/definitions/media-types.ts'
+import { showAlertDialog, showToast } from '@/js/dialog-promises'
 
 export default {
   mixins: [MovablePopup],
@@ -131,12 +150,17 @@ export default {
     Editor
   },
   props: {
-    object: Object,
-    objectType: String, // the type of the object, e.g. 'items', 'things' which corresponds to the yaml element name.
+    object: [Object, Array],
+    objectType: String, // the type of the object, e.g. 'items', 'things', 'rules' which corresponds to the yaml element name.
     objectId: String,
     hintContext: Object,
     readOnly: Boolean,
-    readOnlyMsg: String
+    readOnlyMsg: String,
+    validMediaTypes: Array, // Optional list of media types to show. If not provided, all media types for the object type will be shown
+    optShowAllMediaTypes: Array, // Optional list of media types that will show the "Show all" checkbox. If not provided, the checkbox will not be shown
+    isObjectEmpty: Boolean, // Optional flag to indicate if the object is empty and can't be serialized.
+    emptyMediaTypeTemplates: Object, // Optional map of media types to template objects that can be used for empty objects that can't be serialized
+    postParseCallback: Function // Optional callback function that is called after parsing the code back into an object, which allow various states to be updated
   },
   // @parsed  event is emitted when the code has been parsed back into an object
   //          as a result of calling the parseCode() method
@@ -144,35 +168,44 @@ export default {
   //          The parsed object is passed as the argument.
   // @changed event is emitted when the code is changed in the editor
   //          The code editor's dirty status is passed as a boolean argument.
-  emits: ['changed', 'parsed'],
-  data () {
+  emits: ['changed', 'parsed', 'save'],
+  data() {
     return {
       code: null,
       originalCode: null,
-      displayCodeSwitcher: false,
       dirty: false,
-      errors: null
+      errors: null,
+      isShowAll: false
     }
   },
   computed: {
-    editorMode () {
-      if (this.uiOptionsStore.codeEditorType === 'YAML') {
-        switch (this.objectType) {
-          case 'items':
-            return 'application/vnd.openhab.item+yaml'
-          case 'things':
-            return 'application/vnd.openhab.thing+yaml'
-        }
-      }
-      return this.mediaTypes[this.uiOptionsStore.codeEditorType]
+    editorMode() {
+      const mode = this.mediaTypes[this.uiOptionsStore.codeEditorType]
+      if (mode) return mode
+      const keys = Object.keys(this.mediaTypes || {})
+      if (keys.length > 0) return this.mediaTypes[keys[0]]
+      return undefined
     },
-    mediaTypes () {
-      return SupportedMediaTypes[this.objectType] || DefaultMediaTypes
+    mediaTypes() {
+      let result = SupportedMediaTypes[this.objectType] || DefaultMediaTypes
+      if (!this.validMediaTypes || this.validMediaTypes.length === 0) {
+        return result
+      }
+      result = Object.fromEntries(
+        Object.entries(result).filter(([key, value]) => {
+          return this.validMediaTypes.includes(value)
+        })
+      )
+      return result
+    },
+    showShowAllCheckbox() {
+      if (!this.optShowAllMediaTypes || this.optShowAllMediaTypes.length === 0) return false
+      return this.optShowAllMediaTypes.includes(this.mediaTypes[this.uiOptionsStore.codeEditorType])
     },
     ...mapStores(useUIOptionsStore)
   },
   watch: {
-    dirty () {
+    dirty() {
       this.$emit('changed', this.dirty)
     }
   },
@@ -185,25 +218,61 @@ export default {
      * @param {string} codeType - Optional. The type of code to generate (e.g. YAML, DSL)
      * @param {function} onSuccessCallback - Optional. A callback function to call when the code has been generated
      */
-    generateCode (codeType, onSuccessCallback) {
+    generateCode(codeType, onSuccessCallback) {
       codeType ||= this.uiOptionsStore.codeEditorType
+      if (!this.mediaTypes[codeType]) {
+        codeType = Object.keys(this.mediaTypes)[0]
+      }
       const sourceMediaType = MediaType.JSON
-      const targetMediaType = this.mediaTypes[codeType]
+      let targetMediaType = this.mediaTypes[codeType]
+      if (this.isObjectEmpty && this.emptyMediaTypeTemplates) {
+        const emptyTemplate = this.emptyMediaTypeTemplates[targetMediaType]
+        if (emptyTemplate) {
+          let emptyCode = typeof emptyTemplate === 'function' ? emptyTemplate() : emptyTemplate
+          this.code = emptyCode
+          this.originalCode = emptyCode
+          this.dirty = false
+
+          this.uiOptionsStore.codeEditorType = codeType
+          if (onSuccessCallback) {
+            onSuccessCallback()
+          }
+          return
+        }
+      }
+      const ruleShowAll = targetMediaType === 'application/yaml+rule' && this.isShowAll
+      targetMediaType = targetMediaType.split('+')[0] // remove the +tag, +thing, +item or +rule suffix, if present
+      const params = new URLSearchParams()
+      if (ruleShowAll) {
+        params.set('ruleSerializationOption', 'INCLUDE_ALL')
+      }
       const payload = {}
-      payload[this.objectType] = [this.object]
-      this.$oh.api.postPlain('/rest/file-format/create', JSON.stringify(payload), null, sourceMediaType, { accept: targetMediaType })
+      if (Array.isArray(this.object)) {
+        payload[this.objectType] = this.object
+      } else {
+        payload[this.objectType] = [this.object]
+      }
+      this.$oh.api
+        .postPlain(
+          `/rest/file-format/create${params.size ? '?' : ''}${params.toString()}`,
+          JSON.stringify(payload),
+          null,
+          sourceMediaType,
+          { accept: targetMediaType }
+        )
         .then((code) => {
           // DSL returns different line endings on different platforms and CodeMirror normalizes everything to \n, leading to dirty flag set on load for Windows,
           // therefore normalize before loading in editor.
           this.code = code.replaceAll('\r\n', '\n').replaceAll('\r', '\n')
           this.originalCode = this.code
+          this.dirty = false
           this.uiOptionsStore.codeEditorType = codeType
           if (onSuccessCallback) {
             onSuccessCallback()
           }
         })
         .catch((err) => {
-          f7.dialog.alert(`Error creating ${codeType}: ${err}`).open()
+          showAlertDialog(`Error creating ${codeType}: ${err}`)
         })
     },
     /**
@@ -212,33 +281,50 @@ export default {
      * Called from the parent component to update the object from code.
      * The resulting object is emitted in a `parsed` event.
      *
-     * @param {function} onSuccessCallback - Optional. A callback function to call when the code has been parsed
+     * @param {function} onSuccessCallback - Optional. A callback function to call when the code has been parsed. Receives the parsed object.
      * @param {function} onFailureCallback - Optional. A callback function to call when parsing fails or no object is found
+     * @param {Object} params - Optional. Additional parameters for the parsing request
+     * @returns A Promise
      */
-    parseCode (onSuccessCallback, onFailureCallback) {
-      const sourceMediaType = this.mediaTypes[this.uiOptionsStore.codeEditorType]
+    parseCode(onSuccessCallback, onFailureCallback, params = {}) {
+      let sourceMediaType = this.mediaTypes[this.uiOptionsStore.codeEditorType]
+      sourceMediaType = sourceMediaType.split('+')[0] // remove the +tag, +thing, +item or +rule suffix, if present
       const targetMediaType = MediaType.JSON
-      this.$oh.api.request({
-        method: 'POST',
-        url: '/rest/file-format/parse',
-        data: this.code,
-        processData: false,
-        contentType: sourceMediaType,
-        headers: { accept: targetMediaType }
-      })
+      return this.$oh.api
+        .request({
+          method: 'POST',
+          url: '/rest/file-format/parse',
+          data: this.code,
+          processData: false,
+          contentType: sourceMediaType,
+          headers: { accept: targetMediaType }
+        })
         .then((data) => {
           let object = JSON.parse(data.data)
+          const warnings = object.warnings
+          if (warnings && warnings.length > 0) {
+            showAlertDialog(`Code parsed with warnings:\n${warnings.join('\n')}`)
+          }
           object = object[this.objectType]
           if (object?.length > 0) {
-            this.$emit('parsed', object[0])
-            if (onSuccessCallback) {
-              onSuccessCallback()
+            if (params?.emitAll) {
+              this.$emit('parsed', object, params)
+              if (onSuccessCallback) {
+                onSuccessCallback(object)
+              }
+            } else {
+              this.$emit('parsed', object[0], params)
+              if (onSuccessCallback) {
+                onSuccessCallback(object[0])
+              }
             }
+            return Promise.resolve()
           } else {
             if (onFailureCallback) {
               onFailureCallback()
             }
-            f7.dialog.alert(`Error parsing ${this.uiOptionsStore.codeEditorType}: no ${this.objectType} found`).open()
+            showAlertDialog(`Error parsing ${this.uiOptionsStore.codeEditorType}: no ${this.objectType} found`)
+            return Promise.reject()
           }
         })
         .catch((err) => {
@@ -253,19 +339,14 @@ export default {
               errors = null
               // show a toast message instead of the error popup
               // The codemirror editor will show the error in the editor
-              f7.toast.create({
-                text: 'YAML syntax error. Please check your code.',
-                destroyOnClose: true,
-                closeTimeout: 2000
-              }).open()
+              showToast('YAML syntax error. Please check your code.')
             } else {
               // clean up the error message and turn it into an array to be displayed as a list
               errors = errors
                 .replace(/^.*? to Yaml\w+DTO: /s, '')
                 .split('\n')
                 .map((line) => {
-                  return line.replace(/^invalid thing.* (?=channel id)/, '')
-                    .replace(/\s*\(class org\.openhab\.core.*?\)/, '')
+                  return line.replace(/^invalid thing.* (?=channel id)/, '').replace(/\s*\(class org\.openhab\.core.*?\)/, '')
                 })
                 .slice(0, 8) // limit to 8 lines
             }
@@ -274,46 +355,82 @@ export default {
               f7.popup.open(this.$refs.errors.$el)
             }
           } else {
-            f7.dialog.alert(`Error parsing ${this.uiOptionsStore.codeEditorType}: ${err.message || err.status}`).open()
+            showAlertDialog(`Error parsing ${this.uiOptionsStore.codeEditorType}: ${err.message || err.status}`)
           }
+          return Promise.reject()
         })
     },
-    onEditorInput (value) {
+    onEditorInput(value) {
       this.code = value
       this.dirty = this.code !== this.originalCode
       this.$emit('changed', this.dirty)
     },
-    switchCodeType (type) {
+    switchCodeType(type) {
       if (this.uiOptionsStore.codeEditorType === type) return
 
-      if (this.readOnly || !this.dirty) {
+      if (!this.dirty) {
         this.generateCode(type)
       } else {
-        this.parseCode(() => {
-          this.generateCode(type)
-        })
+        this.parseCode(
+          () => {
+            if (this.postParseCallback) {
+              const result = this.postParseCallback()
+              if (result instanceof Promise) {
+                result.then(() => {
+                  if (!this.mediaTypes[type]) {
+                    f7.dialog.alert(`The current object isn't compatible with ${type} format.`).open()
+                    return
+                  }
+                  this.generateCode(type)
+                })
+              } else {
+                if (!this.mediaTypes[type]) {
+                  console.warn(`The current object isn't compatible with ${type} format. Aborting switch.`)
+                  return
+                }
+                this.$nextTick(() => {
+                  this.generateCode(type)
+                })
+              }
+            } else {
+              this.$nextTick(() => {
+                this.generateCode(type)
+              })
+            }
+          },
+          undefined,
+          { editorType: this.uiOptionsStore.codeEditorType, showAll: this.isShowAll }
+        )
       }
     },
-    copy () {
+    switchShowAll(checked) {
+      if (this.readOnly || !this.dirty) {
+        this.generateCode(this.uiOptionsStore.codeEditorType)
+      } else {
+        this.parseCode(
+          () => {
+            if (this.postParseCallback) {
+              this.postParseCallback()
+            }
+            this.generateCode(this.uiOptionsStore.codeEditorType)
+          },
+          undefined,
+          { editorType: this.uiOptionsStore.codeEditorType, showAll: !checked }
+        )
+      }
+    },
+    copy() {
       copyToClipboard(this.code, {
         onSuccess: () => {
-          f7.toast.create({
-            text: 'Code copied to clipboard',
-            destroyOnClose: true,
-            closeTimeout: 2000
-          }).open()
+          showToast('Code copied to clipboard')
         }
       })
     },
-    revertChanges () {
+    revertChanges() {
       f7.dialog.confirm('Are you sure you want to revert the changes?', () => {
         this.code = this.originalCode
         this.dirty = false
-        f7.toast.create({
-          text: 'Code reverted to original',
-          destroyOnClose: true,
-          closeTimeout: 2000
-        }).open()
+        showToast('Code reverted to original')
       })
     }
   }

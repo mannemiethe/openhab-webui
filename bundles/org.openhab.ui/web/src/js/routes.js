@@ -1,13 +1,15 @@
 import { authorize, isLoggedIn, enforceAdminForRoute } from '@/js/openhab/auth'
+import { beforeLeave } from '@/pages/useDirty'
 
 import HomePage from '../pages/home.vue'
 import NotFoundPage from '../pages/not-found.vue'
 import PageViewPage from '../pages/page/page-view.vue'
 import AnalyzerPopup from '../pages/analyzer/analyzer-popup.vue'
-import { AddonTitles } from '@/assets/addon-store'
+import { AddonTitles } from '@/assets/addon-store.ts'
 
 const AboutPage = () => import(/* webpackChunkName: "about-page" */ '@/pages/about.vue')
 const UserProfilePage = () => import(/* webpackChunkName: "profile-page" */ '@/pages/profile.vue')
+const ChatPage = () => import(/* webpackChunkName: "chat" */ '@/pages/chat/chat-page.vue')
 
 const SettingsMenuPage = () => import(/* webpackChunkName: "admin-base" */ '@/pages/settings/menu/settings-menu.vue')
 const ServiceSettingsPage = () => import(/* webpackChunkName: "admin-base" */ '@/pages/settings/services/service-settings.vue')
@@ -19,7 +21,8 @@ const ItemsListPage = () => import(/* webpackChunkName: "admin-config" */ '@/pag
 const ItemDetailsPage = () => import(/* webpackChunkName: "admin-config" */ '@/pages/settings/items/item-details.vue')
 const ItemEditPage = () => import(/* webpackChunkName: "admin-config" */ '@/pages/settings/items/item-edit.vue')
 const ItemMetadataEditPage = () => import(/* webpackChunkName: "admin-config" */ '@/pages/settings/items/metadata/item-metadata-edit.vue')
-const ItemsAddFromTextualDefinition = () => import(/* webpackChunkName: "admin-config" */ '@/pages/settings/items/parser/items-add-from-textual-definition.vue')
+const ItemsAddFromTextualDefinition = () =>
+  import(/* webpackChunkName: "admin-config" */ '@/pages/settings/items/parser/items-add-from-textual-definition.vue')
 
 const HealthOverviewPage = () => import(/* webpackChunkName: "admin-config" */ '@/pages/settings/health/health-overview.vue')
 const HealthOrphanLinksPage = () => import(/* webpackChunkName: "admin-config" */ '@/pages/settings/health/health-orphanlinks.vue')
@@ -34,9 +37,10 @@ const AddThingPage = () => import(/* webpackChunkName: "admin-config" */ '@/page
 
 const InboxListPage = () => import(/* webpackChunkName: "admin-config" */ '@/pages/settings/things/inbox/inbox-list.vue')
 
-const TransformationsListPage = () => import(/* webpackChunkName: "admin-config" */ '@/pages/settings/transformations/transformations-list.vue')
-const TransformationsEditPage = () => import(/* webpackChunkName: "admin-rules" */ '@/pages/settings/transformations/transformation-edit.vue'
-)
+const TransformationsListPage = () =>
+  import(/* webpackChunkName: "admin-config" */ '@/pages/settings/transformations/transformations-list.vue')
+const TransformationsEditPage = () =>
+  import(/* webpackChunkName: "admin-rules" */ '@/pages/settings/transformations/transformation-edit.vue')
 
 const PersistenceSettingsPage = () => import(/* webpackChunkName: "admin-config" */ '@/pages/settings/persistence/persistence-settings.vue')
 const PersistenceEditPage = () => import(/* webpackChunkName: "admin-config" */ '@/pages/settings/persistence/persistence-edit.vue')
@@ -51,8 +55,11 @@ const PageEditors = {
   map: () => import(/* webpackChunkName: "admin-pages-leaflet" */ '@/pages/settings/pages/map/map-edit.vue'),
   plan: () => import(/* webpackChunkName: "admin-pages-leaflet" */ '@/pages/settings/pages/plan/plan-edit.vue'),
   chart: () => import(/* webpackChunkName: "admin-pages-echarts" */ '@/pages/settings/pages/chart/chart-edit.vue'),
-  sitemap: () => import(/* webpackChunkName: "admin-pages" */ '@/pages/settings/pages/sitemap/sitemap-edit.vue')
+  unknown: () => import(/* webpackChunkName: "admin-pages" */ '@/pages/settings/pages/unknown/unknown-edit.vue')
 }
+
+const SitemapsListPage = () => import(/* webpackChunkName: "admin-pages" */ '@/pages/settings/pages/sitemaps-list.vue')
+const SitemapEditPage = () => import(/* webpackChunkName: "admin-pages" */ '@/pages/settings/pages/sitemap/sitemap-edit.vue')
 
 const RulesListPage = () => import(/* webpackChunkName: "admin-rules" */ '@/pages/settings/rules/rules-list.vue')
 const RuleEditPage = () => import(/* webpackChunkName: "admin-rules" */ '@/pages/settings/rules/rule-edit.vue')
@@ -67,14 +74,21 @@ const BlocksListPage = () => import(/* webpackChunkName: "admin-devtools" */ '@/
 const BlocksEditPage = () => import(/* webpackChunkName: "blockly-editor" */ '@/pages/developer/blocks/blocks-edit.vue')
 const SemanticsEditPage = () => import(/* webpackChunkName: "semantics-editor" */ '@/pages/developer/semantics/semantic-tags-edit.vue')
 const ApiExplorerPage = () => import(/* webpackChunkName: "admin-devtools" */ '@/pages/developer/api-explorer.vue')
-const LogViewerPage = () => import(/* webpackChunkName: "admin-devtools" */ '@/pages/developer/log-viewer.vue')
+const LogViewerPage = () => import(/* webpackChunkName: "admin-devtools" */ '@/pages/developer/log-viewer/log-viewer-page.vue')
 
 const SetupWizardPage = () => import(/* webpackChunkName: "setup-wizard" */ '@/pages/wizards/setup-wizard.vue')
 
-const checkDirtyBeforeLeave = function ({ router, to, from, resolve, reject }) {
-  if (this.currentPageEl?.beforeLeave &&
-    !to.path.startsWith(from.path)) {
-    this.currentPageEl.beforeLeave({ router, to, from, resolve, reject })
+const checkDirtyBeforeLeave = async function ({ router, to, from, resolve, reject }) {
+  // Check if not navigating to a sub-path of current path
+  if (to.path.startsWith(from.path)) {
+    resolve()
+    return
+  }
+
+  // Check if there's unsaved changes in the component
+  const dirtyRef = this.currentPageEl?.__dirty
+  if (dirtyRef?.value) {
+    await beforeLeave({ resolve, reject, router, from, dirty: dirtyRef })
   } else {
     resolve()
   }
@@ -83,23 +97,60 @@ const checkDirtyBeforeLeave = function ({ router, to, from, resolve, reject }) {
 const loadAsync = (page, props) => {
   return async ({ router, to, from, resolve, reject }) => {
     if (!props) {
-      page().then((c) => {
-        resolve({ component: c.default })
-      })
+      page()
+        .then((c) => {
+          resolve({ component: c.default })
+        })
+        .catch((err) => {
+          console.error('Failed to load page component:', err)
+          reject(err)
+        })
     } else if (typeof props === 'object') {
-      page().then((c) => {
-        resolve({ component: c.default }, { props })
-      })
+      page()
+        .then((c) => {
+          resolve({ component: c.default }, { props })
+        })
+        .catch((err) => {
+          console.error('Failed to load page component:', err)
+          reject(err)
+        })
     } else if (typeof props === 'function') {
-      page().then((c) => {
-        resolve(
-          { component: c.default },
-          { props: props({ router, to, from, resolve, reject }) }
-        )
-      })
+      page()
+        .then((c) => {
+          resolve({ component: c.default }, { props: props({ router, to, from, resolve, reject }) })
+        })
+        .catch((err) => {
+          console.error('Failed to load page component:', err)
+          reject(err)
+        })
     }
   }
 }
+
+const PageRoutes = Object.entries(PageEditors)
+  .flatMap(([k, v]) => {
+    return [
+      {
+        path: `${k}/add`,
+        beforeEnter: [enforceAdminForRoute],
+        beforeLeave: [checkDirtyBeforeLeave],
+        async: loadAsync(v, { createMode: true })
+      },
+      {
+        path: `${k}/duplicate`,
+        beforeEnter: [enforceAdminForRoute],
+        beforeLeave: [checkDirtyBeforeLeave],
+        async: loadAsync(v, { createMode: true })
+      },
+      {
+        path: `${k}/:uid`,
+        beforeEnter: [enforceAdminForRoute],
+        beforeLeave: [checkDirtyBeforeLeave],
+        async: loadAsync(v)
+      }
+    ]
+  })
+  .reduce((acc, route) => acc.concat(route), [])
 
 export default [
   {
@@ -157,6 +208,14 @@ export default [
     component: PageViewPage
   },
   {
+    path: '/chat/',
+    async: loadAsync(ChatPage)
+  },
+  {
+    path: '/chat',
+    redirect: '/chat/'
+  },
+  {
     path: '/about/',
     async: loadAsync(AboutPage),
     options: {
@@ -170,14 +229,16 @@ export default [
   },
   {
     path: '/profile/',
-    beforeEnter: [({ resolve, reject }) => {
-      if (isLoggedIn()) {
-        resolve()
-      } else {
-        reject()
-        authorize()
+    beforeEnter: [
+      ({ resolve, reject }) => {
+        if (isLoggedIn()) {
+          resolve()
+        } else {
+          reject()
+          authorize()
+        }
       }
-    }],
+    ],
     async: loadAsync(UserProfilePage),
     options: {
       animate: false
@@ -240,17 +301,30 @@ export default [
         path: 'pages/',
         async: loadAsync(PagesListPage),
         beforeEnter: [enforceAdminForRoute],
+        routes: PageRoutes
+      },
+      {
+        path: 'sitemaps/',
+        beforeEnter: [enforceAdminForRoute],
+        async: loadAsync(SitemapsListPage),
         routes: [
           {
-            path: ':type/:uid',
+            path: 'add',
             beforeEnter: [enforceAdminForRoute],
             beforeLeave: [checkDirtyBeforeLeave],
-            async: ({ to, resolve }) => {
-              PageEditors[to.params.type]().then((c) => {
-                resolve({ component: c.default }, (to.params.uid === 'add') ? { props: { createMode: true } } : {}
-                )
-              })
-            }
+            async: loadAsync(SitemapEditPage, { createMode: true })
+          },
+          {
+            path: 'duplicate',
+            beforeEnter: [enforceAdminForRoute],
+            beforeLeave: [checkDirtyBeforeLeave],
+            async: loadAsync(SitemapEditPage, { createMode: true })
+          },
+          {
+            path: ':uid',
+            beforeEnter: [enforceAdminForRoute],
+            beforeLeave: [checkDirtyBeforeLeave],
+            async: loadAsync(SitemapEditPage)
           }
         ]
       },
@@ -261,9 +335,7 @@ export default [
           {
             path: ':transformationId',
             beforeLeave: checkDirtyBeforeLeave,
-            async: loadAsync(TransformationsEditPage, ({ to }) =>
-              to.params.transformationId === 'add' ? { createMode: true } : {}
-            )
+            async: loadAsync(TransformationsEditPage, ({ to }) => (to.params.transformationId === 'add' ? { createMode: true } : {}))
           }
         ]
       },
@@ -281,14 +353,7 @@ export default [
             path: 'semantics',
             beforeEnter: [enforceAdminForRoute],
             async: loadAsync(HealthSemanticsPage)
-          }
-        ]
-      },
-      {
-        path: 'health',
-        beforeEnter: [enforceAdminForRoute],
-        async: loadAsync(HealthOverviewPage),
-        routes: [
+          },
           {
             path: 'persistence',
             beforeEnter: [enforceAdminForRoute],
@@ -387,7 +452,7 @@ export default [
             path: 'stub',
             beforeEnter: [enforceAdminForRoute],
             beforeLeave: [checkDirtyBeforeLeave],
-            async: loadAsync(RuleEditPage, { createMode: false, stubMode: true})
+            async: loadAsync(RuleEditPage, { createMode: false, stubMode: true })
           },
           {
             path: ':ruleId',
@@ -399,9 +464,7 @@ export default [
                 path: 'script/:moduleId',
                 beforeEnter: [enforceAdminForRoute],
                 beforeLeave: [checkDirtyBeforeLeave],
-                async: loadAsync(ScriptEditPage, ({ to }) =>
-                  to.params.ruleId === 'add' ? { createMode: true } : {}
-                )
+                async: loadAsync(ScriptEditPage, ({ to }) => (to.params.ruleId === 'add' ? { createMode: true } : {}))
               }
             ]
           }
@@ -498,12 +561,14 @@ export default [
         path: '/',
         id: 'main'
       }
-    ].concat(Object.keys(AddonTitles).map((section) => {
-      return {
-        path: section,
-        id: section
-      }
-    })),
+    ].concat(
+      Object.keys(AddonTitles).map((section) => {
+        return {
+          path: section,
+          id: section
+        }
+      })
+    ),
     routes: [
       {
         path: ':section/:addonId',
@@ -526,9 +591,10 @@ export default [
             path: ':uid',
             beforeEnter: [enforceAdminForRoute],
             beforeLeave: [checkDirtyBeforeLeave],
-            async: loadAsync(WidgetEditPage, ({ to }) =>
-              to.params.uid === 'add' ? { createMode: true } : {}
-            )
+            async: loadAsync(WidgetEditPage, ({ to }) => (to.params.uid === 'add' ? { createMode: true } : {})),
+            options: {
+              animate: false
+            }
           }
         ]
       },
@@ -541,9 +607,7 @@ export default [
             path: ':uid',
             beforeEnter: [enforceAdminForRoute],
             beforeLeave: [checkDirtyBeforeLeave],
-            async: loadAsync(BlocksEditPage, ({ to }) =>
-              to.params.uid === 'add' ? { createMode: true } : {}
-            )
+            async: loadAsync(BlocksEditPage, ({ to }) => (to.params.uid === 'add' ? { createMode: true } : {}))
           }
         ]
       },
@@ -566,7 +630,10 @@ export default [
       {
         path: 'log-viewer/',
         beforeEnter: [enforceAdminForRoute],
-        async: loadAsync(LogViewerPage)
+        async: loadAsync(LogViewerPage),
+        options: {
+          animate: false
+        }
       }
     ]
   },

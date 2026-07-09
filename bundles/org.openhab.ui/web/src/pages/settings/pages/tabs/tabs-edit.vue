@@ -1,35 +1,32 @@
 <template>
-  <f7-page @page:afterin="onPageAfterIn" @page:beforeout="onPageBeforeOut" class="tabs-editor">
+  <f7-page ref="tabs-edit-page" @page:afterin="onPageAfterIn" @page:beforeout="onPageBeforeOut" class="tabs-editor">
     <f7-navbar no-hairline>
-      <oh-nav-content :title="!ready ? '' : ((createMode ? 'Create tabbed page' : page.config.label) + dirtyIndicator)"
-                      :save-link="`Save${$device.desktop ? ' (Ctrl-S)' : ''}`"
-                      @save="save()"
-                      :f7router />
+      <oh-nav-content
+        :title="!ready ? '' : (createMode ? 'Create tabbed page' : page.config.label) + dirtyIndicator"
+        :editable="isEditable"
+        :save-link="`Save${$device.desktop ? ' (Ctrl-S)' : ''}`"
+        @save="save()"
+        :f7router />
     </f7-navbar>
     <f7-toolbar tabbar position="top">
-      <f7-link @click="switchTab('design', fromYaml)" :tab-link-active="currentTab === 'design'" tab-link="#design">
-        Design
-      </f7-link>
-      <f7-link @click="switchTab('code', toYaml)" :tab-link-active="currentTab === 'code'" tab-link="#code">
-        Code
-      </f7-link>
+      <f7-link @click="switchTab('design', fromYaml)" :tab-link-active="currentTab === 'design'" tab-link="#design"> Design </f7-link>
+      <f7-link @click="switchTab('code', toYaml)" :tab-link-active="currentTab === 'code'" tab-link="#code"> Code </f7-link>
     </f7-toolbar>
     <f7-tabs class="tabs-editor-tabs">
-      <f7-tab id="design"
-              class="tabs-editor-design-tab"
-              :tab-active="currentTab === 'design'">
+      <f7-tab id="design" class="tabs-editor-design-tab" :tab-active="currentTab === 'design'">
         <f7-block v-if="!ready" class="text-align-center">
           <f7-preloader />
           <div>Loading...</div>
         </f7-block>
         <f7-block v-if="ready && !previewMode" class="block-narrow no-margin-bottom">
-          <page-settings :page="page" :createMode="createMode" :f7router />
+          <not-editable-notice v-if="!isEditable" />
+          <page-settings :page="page" :createMode="createMode" :readOnly="!isEditable" :f7router />
         </f7-block>
 
         <f7-block v-if="ready" class="block-narrow no-margin-top" style="padding-bottom: 10rem">
           <f7-col>
             <f7-block-title>Tabs</f7-block-title>
-            <f7-menu v-if="clipboardType === 'oh-tab'">
+            <f7-menu v-if="isEditable && clipboardType === 'oh-tab'">
               <f7-menu-item style="margin-left: auto" icon-f7="squares_below_rectangle" dropdown>
                 <f7-menu-dropdown right>
                   <f7-menu-dropdown-item @click="pasteWidget(page, null)" href="#" text="Paste" />
@@ -38,24 +35,22 @@
             </f7-menu>
 
             <f7-list media-list class="tabs-list">
-              <f7-list-item v-for="(tab, idx) in page.slots.default"
-                            media-item
-                            :key="idx"
-                            :title="tabEvaluateExpression(tab, idx, 'title')"
-                            :subtitle="tab.config.page"
-                            link="#"
-                            @click="(ev) => configureTab(ev, tab, context)">
+              <f7-list-item
+                v-for="(tab, idx) in page.slots.default"
+                media-item
+                :key="idx"
+                :title="tabEvaluateExpression(tab, idx, 'title')"
+                :subtitle="tab.config.page"
+                link="#"
+                @click="(ev) => configureTab(ev, tab, context)">
                 <template #media>
-                  <oh-icon :icon="tabEvaluateExpression(tab, idx, 'icon')"
-                           :color="'gray'"
-                           :width="32"
-                           :height="32" />
+                  <oh-icon :icon="tabEvaluateExpression(tab, idx, 'icon')" :color="'gray'" :width="32" :height="32" />
                 </template>
                 <template #content-start>
-                  <f7-menu class="configure-tabs-menu">
+                  <f7-menu v-if="isEditable" class="configure-tabs-menu">
                     <f7-menu-item icon-f7="list_bullet" dropdown>
                       <f7-menu-dropdown>
-                        <f7-menu-dropdown-item @click="configureWidget(tab, { component: page })" href="#" text="Configure Tab" />
+                        <f7-menu-dropdown-item @click="configureWidget(tab, { component: page })" href="#" text="Tab Settings" />
                         <f7-menu-dropdown-item @click="editWidgetCode(tab, { component: page })" href="#" text="Edit YAML" />
                         <f7-menu-dropdown-item divider />
                         <f7-menu-dropdown-item @click="cutWidget(tab, { component: page })" href="#" text="Cut" />
@@ -70,18 +65,21 @@
                   </f7-menu>
                 </template>
               </f7-list-item>
-              <f7-list-button color="blue" title="Add tab" @click="addWidget(page, 'oh-tab')" />
+              <f7-list-button v-if="isEditable" color="blue" title="Add tab" @click="addWidget(page, 'oh-tab')" />
             </f7-list>
           </f7-col>
         </f7-block>
       </f7-tab>
 
       <f7-tab id="code" :tab-active="currentTab === 'code'">
-        <editor v-if="currentTab === 'code'"
-                class="page-code-editor"
-                mode="application/vnd.openhab.uicomponent+yaml;type=tabs"
-                :value="pageYaml"
-                @input="onEditorInput" />
+        <editor
+          v-if="currentTab === 'code'"
+          class="page-code-editor"
+          mode="application/vnd.openhab.uicomponent+yaml;type=tabs"
+          :value="pageYaml"
+          :readOnly="!isEditable"
+          @input="onEditorInput"
+          @save="save()" />
         <!-- <pre class="yaml-message padding-horizontal" :class="[yamlError === 'OK' ? 'text-color-green' : 'text-color-red']">{{yamlError}}</pre> -->
       </f7-tab>
     </f7-tabs>
@@ -90,7 +88,7 @@
 
 <style lang="stylus">
 .tabs-editor
-  .page-code-editor.v-codemirror
+  .code-editor-fit.page-code-editor
     position absolute
     height calc(100% - var(--f7-navbar-height) - var(--f7-toolbar-height))
   .tabs-list
@@ -106,16 +104,20 @@
 
 <script>
 import { defineAsyncComponent } from 'vue'
-import { f7, theme } from 'framework7-vue'
+import { f7 } from 'framework7-vue'
 
 import PageDesignerMixin from '@/pages/settings/pages/pagedesigner-mixin'
-import { useWidgetExpression } from '@/components/widgets/useWidgetExpression.ts'
+import { resolveDefaultProps } from '../defaultProps'
+import { toFileYAMLSyntax, fromFileYAMLSyntax } from '@/pages/yaml-file-format'
 
-import YAML from 'yaml'
+import { useWidgetExpression } from '@/components/widgets/useWidgetExpression.ts'
+import { useDirty } from '@/pages/useDirty'
+import { useTabs } from '@/pages/useTabs'
 
 import { OhTabDefinition } from '@/assets/definitions/widgets/tabs'
 
 import PageSettings from '@/components/pagedesigner/page-settings.vue'
+import NotEditableNotice from '@/components/util/not-editable-notice.vue'
 
 const ConfigurableWidgets = { OhTabDefinition }
 
@@ -123,19 +125,24 @@ export default {
   mixins: [PageDesignerMixin],
   components: {
     editor: defineAsyncComponent(() => import(/* webpackChunkName: "script-editor" */ '@/components/config/controls/script-editor.vue')),
-    PageSettings
+    PageSettings,
+    NotEditableNotice
   },
   props: {
     createMode: Boolean,
+    pageCopy: Object,
     uid: String,
     f7router: Object,
     f7route: Object
   },
-  setup () {
+  setup() {
     const { evaluateExpression } = useWidgetExpression()
-    return { theme, evaluateExpression }
+    const { dirty, dirtyIndicator } = useDirty('tabs-edit-page')
+    const { currentTab, switchTab } = useTabs('design')
+
+    return { evaluateExpression, dirty, dirtyIndicator, currentTab, switchTab }
   },
-  data () {
+  data() {
     return {
       page: {
         uid: 'page_' + f7.utils.id(),
@@ -147,7 +154,8 @@ export default {
     }
   },
   methods: {
-    addWidget (component, widgetType, parentContext, slot) {
+    addWidget(component, widgetType, parentContext, slot) {
+      if (!this.isEditable) return
       if (!slot) slot = 'default'
       if (!component.slots) component.slots = {}
       if (!component.slots[slot]) component.slots[slot] = []
@@ -163,34 +171,42 @@ export default {
         this.forceUpdate()
       }
     },
-    getWidgetDefinition (componentType) {
+    getWidgetDefinition(componentType) {
       const definition = Object.values(ConfigurableWidgets).find((wd) => typeof wd === 'function' && wd().name === componentType)
       if (!definition) return null
       return definition()
     },
-    configureTab (ev, tab, context) {
+    configureTab(ev, tab, context) {
       let el = ev.target
       ev.cancelBubble = true
       while (!el.classList.contains('media-item')) {
         if (el && el.classList.contains('menu')) return
         el = el.parentElement
       }
-      this.context.editmode.configureWidget(tab, context)
+      this.configureWidget(tab, context)
     },
-    tabEvaluateExpression (tab, idx, key) {
+    tabEvaluateExpression(tab, idx, key) {
       return this.evaluateExpression('tab-' + idx + '-' + key, tab.config[key], this.context, tab.config.pageConfig)
     },
-    toYaml () {
-      this.pageYaml = YAML.stringify({
-        config: this.page.config,
-        tabs: this.page.slots.default
-      })
+    toYaml() {
+      this.pageYaml = toFileYAMLSyntax('pages', this.page)
     },
-    fromYaml () {
+    fromYaml() {
       try {
-        const updatedPage = YAML.parse(this.pageYaml)
+        const updatedPage = fromFileYAMLSyntax('pages', this.pageYaml, this.page.uid)
         this.page.config = updatedPage.config
-        this.page.slots.default = updatedPage.tabs
+        this.page.tags = updatedPage.tags || []
+        this.page.props = resolveDefaultProps(updatedPage.props)
+        if (!updatedPage.slots) {
+          // maintain compatibility with older versions of the page schema
+          // where tabs were directly on the page object instead of in a slots default property
+          // so that users can paste older YAML code without having to adjust the structure
+          this.page.slots = {
+            default: updatedPage.tabs || []
+          }
+        } else {
+          this.page.slots = updatedPage.slots
+        }
         this.forceUpdate()
         return true
       } catch (e) {

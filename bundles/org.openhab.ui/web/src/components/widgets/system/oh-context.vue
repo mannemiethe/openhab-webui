@@ -1,31 +1,31 @@
 <template>
-  <generic-widget-component v-for="(slotComponent, idx) in children"
-                            v-bind="$attrs"
-                            :key="'default-' + idx"
-                            :context="childrenContext(slotComponent)" />
+  <generic-widget-component
+    v-for="(slotComponent, idx) in defaultSlots"
+    v-bind="$attrs"
+    :key="'default-' + idx"
+    :context="childrenContext(slotComponent)" />
 </template>
 
 <script>
 import { f7 } from 'framework7-vue'
 
-import mixin from '../widget-mixin'
+import { computed } from 'vue'
+import { useWidgetContext } from '@/components/widgets/useWidgetContext'
 import { OhContextDefinition } from '@/assets/definitions/widgets/system'
 
 export default {
   inheritAttrs: false,
-  mixins: [mixin],
+  props: {
+    context: Object
+  },
   widget: OhContextDefinition,
-  data () {
-    return {
-      varScope: (this.context.varScope || 'varScope') + '-' + f7.utils.id()
-    }
+  setup(props) {
+    const { varScope, childContext, evaluateExpression, defaultSlots } = useWidgetContext(computed(() => props.context))
+    varScope.value = (props.context.varScope || 'varScope') + '-' + f7.utils.id()
+    return { varScope, childContext, evaluateExpression, defaultSlots }
   },
   computed: {
-    children () {
-      if (!this.context?.component?.slots?.default) return []
-      return this.context.component.slots.default
-    },
-    fn () {
+    fn() {
       if (!this.context?.component?.config) return {}
       let evalFunc = {}
       const sourceFunc = this.context.component.config.functions || {}
@@ -41,7 +41,7 @@ export default {
     }
   },
   methods: {
-    childrenContext (childComp) {
+    childrenContext(childComp) {
       const ctx = this.childContext(childComp)
       const ctxFunctions = this.fn
       if (this.context.fn) {
@@ -60,12 +60,12 @@ export default {
       ctx.const = ctxConstants
 
       if (typeof ctx.ctxVars !== 'object') ctx.ctxVars = {}
-      ctx.ctxVars[this.varScope] = this.ctxVars
+      ctx.ctxVars[this.varScope] = this.localCtxVars
 
       return ctx
     }
   },
-  beforeMount () {
+  beforeMount() {
     const evaluateDefaults = () => {
       if (!this.context?.component?.config) return
 
@@ -78,12 +78,12 @@ export default {
         }
       }
 
-      this.ctxVars = {}
+      this.localCtxVars = {}
       const sourceCtxVars = this.context.component.config.variables || {}
       if (sourceCtxVars) {
         if (typeof sourceCtxVars !== 'object') return
         for (const key in sourceCtxVars) {
-          this.ctxVars[key] = this.evaluateExpression(key, sourceCtxVars[key])
+          this.localCtxVars[key] = this.evaluateExpression(key, sourceCtxVars[key])
         }
       }
     }

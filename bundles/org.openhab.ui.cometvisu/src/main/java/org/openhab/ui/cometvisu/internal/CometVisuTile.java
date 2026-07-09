@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2025 Contributors to the openHAB project
+ * Copyright (c) 2010-2026 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -18,7 +18,7 @@ import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.core.model.sitemap.SitemapProvider;
+import org.openhab.core.sitemap.registry.SitemapProvider;
 import org.openhab.core.ui.tiles.Tile;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -29,6 +29,7 @@ import org.osgi.service.component.annotations.ReferencePolicy;
  *
  * @author Tobias Bräutigam - Initial contribution
  * @author Yannick Schaus - remove dependency to dashboard
+ * @author Mark Herwege - Implement sitemap registry
  */
 @Component(service = Tile.class, immediate = true)
 @NonNullByDefault

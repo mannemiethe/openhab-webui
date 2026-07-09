@@ -1,80 +1,59 @@
 <template>
-  <f7-page @page:beforein="onPageBeforeIn">
+  <f7-page ref="item-metadata-edit-page" @page:beforein="onPageBeforeIn">
     <f7-navbar no-hairline>
-      <oh-nav-content :title="`${editable ? 'Edit' : 'View'} Item Metadata: ${namespace} ${dirtyIndicator}`"
-                      :save-link="`Save${$device.desktop ? ' (Ctrl-S)' : ''}`"
-                      @save="save()"
-                      :f7router />
+      <oh-nav-content
+        :title="`${editable ? 'Edit' : 'View'} Item Metadata: ${namespace} ${dirtyIndicator}`"
+        :save-link="`Save${$device.desktop ? ' (Ctrl-S)' : ''}`"
+        @save="save()"
+        :f7router />
     </f7-navbar>
     <f7-toolbar v-if="ready" tabbar position="top">
-      <f7-link v-if="!generic"
-               @click="switchTab('config', fromYaml)"
-               :tab-link-active="currentTab === 'config'"
-               tab-link="#config">
+      <f7-link v-if="!generic" @click="switchTab('config', fromYaml)" :tab-link-active="currentTab === 'config'" tab-link="#config">
         Config
       </f7-link>
-      <f7-link @click="switchTab('code', toYaml)" :tab-link-active="currentTab === 'code'" tab-link="#code">
-        Code
-      </f7-link>
+      <f7-link @click="switchTab('code', toYaml)" :tab-link-active="currentTab === 'code'" tab-link="#code"> Code </f7-link>
     </f7-toolbar>
     <f7-toolbar v-if="ready && generic" position="bottom">
-      <f7-button v-if="!creationMode"
-                 color="red"
-                 @click="remove()"
-                 class="width-100">
-        Remove metadata
-      </f7-button>
+      <f7-button v-if="!creationMode" color="red" @click="remove()" class="width-100"> Remove metadata </f7-button>
     </f7-toolbar>
     <f7-tabs class="metadata-editor-tabs">
-      <f7-tab id="config"
-              class="metadata-editor-config-tab"
-              :tab-active="currentTab === 'config'">
-        <f7-block class="block-narrow" v-if="ready && currentTab === 'config'">
+      <f7-tab id="config" class="metadata-editor-config-tab" :tab-active="currentTab === 'config'">
+        <f7-block v-if="ready && currentTab === 'config'" class="block-narrow">
           <f7-col>
-            <component :is="editorControl"
-                       :item="item"
-                       :metadata="metadata"
-                       :namespace="namespace" />
+            <component :is="editorControl" :item="item" :metadata="metadata" :namespace="namespace" />
           </f7-col>
         </f7-block>
-        <f7-block class="block-narrow" v-if="ready">
+        <f7-block v-if="ready" class="block-narrow">
           <f7-col>
             <f7-list>
-              <f7-list-button color="red" v-if="!creationMode && editable" @click="remove()">
-                Remove metadata
-              </f7-list-button>
+              <f7-list-button v-if="!creationMode && editable" color="red" @click="remove()"> Remove metadata </f7-list-button>
             </f7-list>
           </f7-col>
         </f7-block>
       </f7-tab>
 
       <f7-tab id="code" :tab-active="currentTab === 'code'">
-        <f7-icon v-if="!editable"
-                 f7="lock"
-                 class="float-right margin"
-                 style="opacity: 0.5; z-index: 4000; user-select: none"
-                 size="50"
-                 color="gray"
-                 tooltip="This metadata is not editable as it has not been created through the UI" />
-        <editor v-if="currentTab === 'code'"
-                class="metadata-code-editor"
-                mode="text/x-yaml"
-                :value="yaml"
-                :readOnly="!editable"
-                @input="onEditorInput" />
+        <editor
+          v-if="currentTab === 'code'"
+          class="metadata-code-editor"
+          mode="text/x-yaml"
+          :value="yaml"
+          :readOnly="!editable"
+          @input="onEditorInput"
+          @save="save()" />
       </f7-tab>
     </f7-tabs>
   </f7-page>
 </template>
 
 <style lang="stylus">
-.metadata-code-editor.v-codemirror
+.metadata-code-editor
   position absolute
   height calc(100% - var(--f7-navbar-height) - var(--f7-toolbar-height))
 </style>
 
 <script>
-import { f7, theme } from 'framework7-vue'
+import { f7 } from 'framework7-vue'
 import { nextTick, defineAsyncComponent } from 'vue'
 import YAML from 'yaml'
 import fastDeepEqual from 'fast-deep-equal/es6'
@@ -95,11 +74,13 @@ import ItemMetadataHomeKit from '@/components/item/metadata/item-metadata-homeki
 import ItemMetadataMatter from '@/components/item/metadata/item-metadata-matter.vue'
 import ItemMetadataGa from '@/components/item/metadata/item-metadata-ga.vue'
 import ItemMetadataLinktomore from '@/components/item/metadata/item-metadata-linktomore.vue'
-import DirtyMixin from '../../dirty-mixin'
 import ItemMixin from '@/components/item/item-mixin.js'
+import { showToast } from '@/js/dialog-promises'
+import { useDirty } from '@/pages/useDirty'
+import { useTabs } from '@/pages/useTabs'
 
 export default {
-  mixins: [DirtyMixin, ItemMixin],
+  mixins: [ItemMixin],
   props: {
     itemName: String,
     namespace: String,
@@ -108,13 +89,15 @@ export default {
   components: {
     editor: defineAsyncComponent(() => import(/* webpackChunkName: "script-editor" */ '@/components/config/controls/script-editor.vue'))
   },
-  setup () {
-    return { theme }
+  setup() {
+    const { currentTab, switchTab } = useTabs('config')
+    const { dirty, dirtyIndicator, setupDirtyWatch } = useDirty('item-metadata-edit-page')
+
+    return { dirty, dirtyIndicator, setupDirtyWatch, currentTab, switchTab }
   },
-  data () {
+  data() {
     return {
       ready: false,
-      currentTab: 'config',
       creationMode: true,
       generic: MetadataNamespaces.map((n) => n.name).indexOf(this.namespace) < 0,
       item: {},
@@ -134,7 +117,7 @@ export default {
     }
   },
   computed: {
-    editorControl () {
+    editorControl() {
       switch (this.namespace) {
         case 'stateDescription':
         case 'commandDescription':
@@ -169,7 +152,7 @@ export default {
           return null
       }
     },
-    yamlError () {
+    yamlError() {
       if (this.currentTab !== 'code') return null
       try {
         YAML.parse(this.yaml, { prettyErrors: true })
@@ -178,18 +161,19 @@ export default {
         return e
       }
     },
-    editable () {
+    editable() {
+      if (this.namespace === 'semantics') return false
       return this.metadata.editable !== false
     }
   },
   methods: {
-    onPageBeforeIn () {
+    onPageBeforeIn() {
       this.load()
     },
-    onEditorInput (value) {
+    onEditorInput(value) {
       this.yaml = value
     },
-    load () {
+    load() {
       this.$oh.api.get(`/rest/items/${this.itemName}?metadata=${this.namespace}`).then((item) => {
         this.item = item
         if (item.metadata) {
@@ -207,67 +191,46 @@ export default {
         })
       })
     },
-    save () {
+    save() {
       if (!this.editable) return
 
       if (this.currentTab === 'code' && !this.fromYaml()) return
-      if (!this.metadata.value) this.metadata.value = ' '
-      this.saveMetadata(this.item, this.namespace, this.metadata).then((data) => {
-        if (this.creationMode) {
-          f7.toast.create({
-            text: 'Metadata created',
-            destroyOnClose: true,
-            closeTimeout: 2000
-          }).open()
-        } else {
-          f7.toast.create({
-            text: 'Metadata updated',
-            destroyOnClose: true,
-            closeTimeout: 2000
-          }).open()
-        }
-        this.savedMetadata = cloneDeep(this.metadata)
-        this.dirty = false
-        this.f7router.back()
-      }).catch((err) => {
-        f7.toast.create({
-          text: 'Error while saving metadata: ' + err,
-          destroyOnClose: true,
-          closeTimeout: 2000
-        }).open()
-      })
+      this.saveMetadata(this.item, this.namespace, this.metadata)
+        .then((data) => {
+          if (this.creationMode) {
+            showToast('Metadata created')
+          } else {
+            showToast('Metadata updated')
+          }
+          this.savedMetadata = cloneDeep(this.metadata)
+          this.dirty = false
+          this.f7router.back()
+        })
+        .catch((err) => {
+          showToast('Error while saving metadata: ' + err)
+        })
     },
-    remove () {
+    remove() {
       let nslabel = ([...MetadataNamespaces].find((ns) => ns.name === this.namespace) || { label: this.namespace }).label
-      f7.dialog.confirm(
-        `Are you sure you want to remove all metadata for "${nslabel}"?`,
-        'Remove metadata',
-        () => {
-          this.deleteMetadata(this.item, this.namespace).then(() => {
-            f7.toast.create({
-              text: 'Metadata deleted',
-              destroyOnClose: true,
-              closeTimeout: 2000
-            }).open()
+      f7.dialog.confirm(`Are you sure you want to remove all metadata for "${nslabel}"?`, 'Remove metadata', () => {
+        this.deleteMetadata(this.item, this.namespace)
+          .then(() => {
+            showToast('Metadata deleted')
             this.dirty = false
             this.f7router.back()
-          }).catch((err) => {
-            f7.toast.create({
-              text: 'Error while deleting metadata: ' + err,
-              destroyOnClose: true,
-              closeTimeout: 2000
-            }).open()
           })
-        }
-      )
+          .catch((err) => {
+            showToast('Error while deleting metadata: ' + err)
+          })
+      })
     },
-    toYaml () {
+    toYaml() {
       this.yaml = YAML.stringify({
         value: this.metadata.value,
         config: this.metadata.config || {}
       })
     },
-    fromYaml () {
+    fromYaml() {
       try {
         const updatedMetadata = YAML.parse(this.yaml)
         this.metadata.value = updatedMetadata.value

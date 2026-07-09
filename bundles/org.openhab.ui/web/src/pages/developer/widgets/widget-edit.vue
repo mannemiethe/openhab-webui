@@ -1,27 +1,32 @@
 <template>
-  <f7-page @page:afterin="onPageAfterIn" @page:beforeout="onPageBeforeOut">
+  <f7-page ref="widget-edit-page" @page:afterin="onPageAfterIn" @page:beforeout="onPageBeforeOut">
     <f7-navbar>
-      <oh-nav-content :title="(createMode ? 'Create Widget' : 'Widget: ' + widget.uid) + dirtyIndicator"
-                      :save-link="`Save${$device.desktop ? ' (Ctrl-S)' : ''}`"
-                      @save="save()"
-                      :f7router />
+      <oh-nav-content
+        :title="(createMode ? 'Create Widget' : 'Widget: ' + widget.uid) + dirtyIndicator"
+        :editable="isEditable"
+        :save-link="`Save${$device.desktop ? ' (Ctrl-S)' : ''}`"
+        @save="save()"
+        :f7router />
     </f7-navbar>
     <f7-toolbar position="bottom">
-      <f7-link @click="widgetPropsOpened = true">
-        Set Props<span v-if="$device.desktop">&nbsp;(Ctrl-P)</span>
-      </f7-link>
-      <f7-link icon-f7="uiwindow_split_2x1" @click="split = (split === 'horizontal') ? 'vertical' : 'horizontal'; blockKey = f7.utils.id()" />
-      <f7-link @click="redrawWidget">
-        Redraw<span v-if="$device.desktop">&nbsp;(Ctrl-R)</span>
-      </f7-link>
+      <f7-link @click="widgetPropsOpened = true"> Set Props<span v-if="$device.desktop">&nbsp;(Ctrl-P)</span> </f7-link>
+      <!-- prettier-ignore  -->
+      <f7-link
+        icon-f7="uiwindow_split_2x1"
+        @click="split = split === 'horizontal' ? 'vertical' : 'horizontal'; blockKey = f7.utils.id()" />
+      <f7-link @click="redrawWidget"> Redraw<span v-if="$device.desktop">&nbsp;(Ctrl-R)</span> </f7-link>
     </f7-toolbar>
-    <f7-block :key="blockKey + '-h'" v-if="split === 'horizontal'" class="widget-editor horizontal">
+    <f7-block v-if="split === 'horizontal'" :key="blockKey + '-h'" class="widget-editor horizontal">
+      <not-editable-notice v-if="ready && !isEditable" subject="widget" />
       <f7-row resizable>
         <f7-col style="min-width: 20px" class="widget-code">
-          <editor class="widget-component-editor"
-                  mode="application/vnd.openhab.uicomponent+yaml;type=widget"
-                  :value="widgetDefinition"
-                  @input="onEditorInput" />
+          <editor
+            class="widget-component-editor"
+            mode="application/vnd.openhab.uicomponent+yaml;type=widget"
+            :value="widgetDefinition"
+            :readOnly="!isEditable"
+            @input="onEditorInput"
+            @save="save()" />
         </f7-col>
       </f7-row>
       <f7-row v-if="ready" resizable>
@@ -31,47 +36,39 @@
       </f7-row>
     </f7-block>
     <f7-block v-else :key="blockKey + 'b'" class="widget-editor vertical">
+      <not-editable-notice v-if="ready && !isEditable" subject="widget" />
       <f7-row resizable>
         <f7-col resizable style="min-width: 20px" class="widget-code">
-          <editor class="widget-component-editor"
-                  mode="application/vnd.openhab.uicomponent+yaml;type=widget"
-                  :value="widgetDefinition"
-                  @input="onEditorInput" />
+          <editor
+            class="widget-component-editor"
+            mode="application/vnd.openhab.uicomponent+yaml;type=widget"
+            :value="widgetDefinition"
+            :readOnly="!isEditable"
+            @input="onEditorInput"
+            @save="save()" />
         </f7-col>
-        <f7-col v-if="ready"
-                resizable
-                style="min-width: 20px"
-                class="widget-preview padding-right margin-bottom">
+        <f7-col v-if="ready" resizable style="min-width: 20px" class="widget-preview padding-right margin-bottom">
           <generic-widget-component :key="widgetKey" :context="context" />
         </f7-col>
       </f7-row>
     </f7-block>
 
-    <f7-popup ref="widgetProps"
-              close-on-escape
-              class="widgetprops-popup"
-              :opened="widgetPropsOpened"
-              @popup:closed="widgetPropsClosed">
+    <f7-popup ref="widgetProps" close-on-escape class="widgetprops-popup" :opened="widgetPropsOpened" @popup:closed="widgetPropsClosed">
       <f7-page v-if="widgetPropsOpened">
         <f7-navbar>
           <f7-nav-left>
-            <f7-link icon-ios="f7:arrow_left"
-                     icon-md="material:arrow_back"
-                     icon-aurora="f7:arrow_left"
-                     popup-close />
+            <f7-link icon-ios="f7:arrow_left" icon-md="material:arrow_back" icon-aurora="f7:arrow_left" popup-close />
           </f7-nav-left>
           <f7-nav-title>Set Widget Props</f7-nav-title>
           <f7-nav-right>
-            <f7-link @click="updateWidgetProps">
-              Done
-            </f7-link>
+            <f7-link @click="updateWidgetProps"> Done </f7-link>
           </f7-nav-right>
         </f7-navbar>
         <f7-block v-if="widget.props" class="no-padding">
           <f7-col>
-            <f7-block-footer>
-              Please note that expressions in properties are not evaluated inside the widget editor,
-              but are evaluated when the widget is used on pages.
+            <f7-block-footer class="padding-horizontal">
+              Please note that expressions in properties are not evaluated inside the widget editor, but are evaluated when the widget is
+              used on pages.
             </f7-block-footer>
             <config-sheet
               :parameterGroups="widget.props.parameterGroups || []"
@@ -94,7 +91,7 @@
   top 0
   height calc(100%)
   .code-editor-fit
-    height calc(100% - var(--f7-grid-gap))
+    height 100%
   .row
     height 100%
     .widget-preview
@@ -102,37 +99,41 @@
       overflow auto
     .widget-code
       height 100%
-  .v-codemirror
-    height 100%
+      position relative
   &.vertical
     .block
       z-index auto !important
   &.horizontal
     .row
       height 50%
-    .vue-codemirror
+    .code-editor-fit
       height calc(100% - var(--f7-grid-gap))
 </style>
 
 <script>
 import { defineAsyncComponent, nextTick } from 'vue'
-import { theme, f7 } from 'framework7-vue'
+import { f7 } from 'framework7-vue'
+import { useThrottleFn } from '@vueuse/core'
 
-import YAML from 'yaml'
 import ConfigSheet from '@/components/config/config-sheet.vue'
-import DirtyMixin from '@/pages/settings/dirty-mixin'
+import NotEditableNotice from '@/components/util/not-editable-notice.vue'
 
 import * as StandardListWidgets from '@/components/widgets/standard/list'
+import * as api from '@/api'
 
 import { useStatesStore } from '@/js/stores/useStatesStore'
+import { useViewArea } from '@/js/composables/useViewArea'
+import { transformParameterDefaults } from '@/components/widgets/helpers.ts'
+import { showToast } from '@/js/dialog-promises'
+import { useDirty } from '@/pages/useDirty'
 
-const toStringOptions = { toStringDefaults: { lineWidth: 0 } }
+import { toFileYAMLSyntax, fromFileYAMLSyntax } from '@/pages/yaml-file-format'
 
 export default {
-  mixins: [DirtyMixin],
   components: {
     editor: defineAsyncComponent(() => import(/* webpackChunkName: "script-editor" */ '@/components/config/controls/script-editor.vue')),
-    ConfigSheet
+    ConfigSheet,
+    NotEditableNotice
   },
   props: {
     uid: String,
@@ -140,12 +141,15 @@ export default {
     f7router: Object,
     f7route: Object
   },
-  setup () {
-    return { f7, theme }
+  setup() {
+    useViewArea()
+    const { dirty, dirtyIndicator } = useDirty('widget-edit-page')
+    return { f7, dirty, dirtyIndicator }
   },
-  data () {
+  data() {
     return {
       widgetDefinition: null,
+      widgetEditable: true,
       items: [],
       ready: false,
       split: 'vertical',
@@ -161,55 +165,75 @@ export default {
     }
   },
   computed: {
-    context () {
+    context() {
       return {
-        component: !this.widget.component || this.standardListWidgets.includes(this.widget.component) || this.widget.component.startsWith('f7-list-item')
-          ? {
-            component: 'oh-list-card',
-            config: {
-              mediaList: true
-            },
-            slots: {
-              default: [this.widget]
-            }
-          }
-          : this.widget,
+        component:
+          !this.widget.component ||
+          this.standardListWidgets.includes(this.widget.component) ||
+          this.widget.component.startsWith('f7-list-item')
+            ? {
+                component: 'oh-list-card',
+                config: {
+                  mediaList: true,
+                  accordionList: true
+                },
+                slots: {
+                  default: [this.widget]
+                }
+              }
+            : this.widget,
         store: useStatesStore().trackedItems,
         props: this.props,
         vars: this.vars,
-        ctxVars: this.ctxVars
+        ctxVars: this.ctxVars,
+        noExpressionCache: true
       }
     },
-    widget () {
+    isEditable() {
+      return this.createMode || this.widgetEditable
+    },
+    widget() {
       try {
         if (!this.widgetDefinition) return {}
-        return YAML.parse(this.widgetDefinition, { prettyErrors: true, toStringOptions })
+        const uid = this.createMode ? null : this.uid
+        return fromFileYAMLSyntax('widgets', this.widgetDefinition, uid)
       } catch (e) {
         return { component: 'Error', config: { error: e.message } }
       }
     }
   },
+  watch: {
+    'widget.config.defineVars'(newVal) {
+      if (newVal) {
+        this.vars = Object.assign(this.vars, newVal)
+      }
+    }
+  },
   methods: {
-    onPageAfterIn () {
+    onPageAfterIn() {
       if (window) {
         window.addEventListener('keydown', this.keyDown)
       }
       useStatesStore().startTrackingStates()
       this.load()
     },
-    onPageBeforeOut () {
+    onPageBeforeOut() {
       if (window) {
         window.removeEventListener('keydown', this.keyDown)
       }
       useStatesStore().stopTrackingStates()
     },
-    onEditorInput (value) {
-      this.widgetDefinition = value
-      if (!this.loading) {
-        this.dirty = true
-      }
-    },
-    keyDown (ev) {
+    onEditorInput: useThrottleFn(
+      function (value) {
+        this.widgetDefinition = value
+        if (!this.loading) {
+          this.dirty = true
+        }
+      },
+      300,
+      true
+    ),
+    keyDown(ev) {
       if ((ev.ctrlKey || ev.metaKey) && !(ev.altKey || ev.shiftKey)) {
         switch (ev.keyCode) {
           case 80:
@@ -230,11 +254,11 @@ export default {
         }
       }
     },
-    load () {
+    load() {
       if (this.loading) return
       this.loading = true
       if (this.createMode) {
-        this.widgetDefinition = YAML.stringify({
+        this.widgetDefinition = toFileYAMLSyntax('widgets', {
           uid: 'widget_' + f7.utils.id(),
           props: {
             parameterGroups: [],
@@ -261,14 +285,19 @@ export default {
             footer: '=props.prop1',
             content: '=items[props.item].displayState || items[props.item].state'
           }
-        }, { toStringOptions })
+        })
         nextTick(() => {
           this.loading = false
           this.ready = true
         })
       } else {
-        this.$oh.api.get('/rest/ui/components/ui:widget/' + this.uid).then((data) => {
-          this.widgetDefinition = YAML.stringify(data, { toStringOptions })
+        api.getUiComponentInNamespace({ namespace: 'ui:widget', componentUID: this.uid }).then((data) => {
+          if (data.props?.parameters) {
+            data.props.parameters = transformParameterDefaults(data.props.parameters)
+          }
+          this.widgetEditable = data.editable ?? true
+          delete data.editable
+          this.widgetDefinition = toFileYAMLSyntax('widgets', data)
           nextTick(() => {
             this.loading = false
             this.ready = true
@@ -276,7 +305,8 @@ export default {
         })
       }
     },
-    save (stay) {
+    save(stay) {
+      if (!this.isEditable) return
       if (!this.widget.uid) {
         f7.dialog.alert('Please give an UID to the widget')
         return
@@ -289,43 +319,34 @@ export default {
         return
       }
 
-      const promise = (this.createMode)
-        ? this.$oh.api.postPlain('/rest/ui/components/ui:widget', JSON.stringify(this.widget), 'text/plain', 'application/json')
-        : this.$oh.api.put('/rest/ui/components/ui:widget/' + this.widget.uid, this.widget)
-      promise.then((data) => {
-        this.dirty = false
-        if (this.createMode) {
-          f7.toast.create({
-            text: 'Widget created',
-            destroyOnClose: true,
-            closeTimeout: 2000
-          }).open()
-          this.f7router.navigate(this.f7route.url.replace('/add', '/' + this.widget.uid), { reloadCurrent: true })
-          this.load()
-        } else {
-          f7.toast.create({
-            text: 'Widget updated',
-            destroyOnClose: true,
-            closeTimeout: 2000
-          }).open()
-        }
-        f7.emit('sidebarRefresh', null)
-      }).catch((err) => {
-        f7.toast.create({
-          text: 'Error while saving page: ' + err,
-          destroyOnClose: true,
-          closeTimeout: 2000
-        }).open()
-      })
+      const promise = this.createMode
+        ? api.addUiComponentToNamespace({ namespace: 'ui:widget', rootUiComponent: this.widget })
+        : api.updateUiComponentInNamespace({ namespace: 'ui:widget', componentUID: this.widget.uid, rootUiComponent: this.widget })
+      promise
+        .then(() => {
+          this.dirty = false
+          if (this.createMode) {
+            showToast('Widget created')
+            this.f7router.navigate(this.f7route.url.replace('/add', '/' + this.widget.uid), { reloadCurrent: true })
+            this.load()
+          } else {
+            showToast('Widget updated')
+          }
+          f7.emit('sidebarRefresh', null)
+        })
+        .catch((err) => {
+          showToast('Error while saving widget: ' + err)
+        })
     },
-    redrawWidget () {
+    redrawWidget() {
+      this.vars = {}
       this.ctxVars = {}
       this.widgetKey = f7.utils.id()
     },
-    widgetPropsClosed () {
+    widgetPropsClosed() {
       this.widgetPropsOpened = false
     },
-    updateWidgetProps () {
+    updateWidgetProps() {
       this.widgetPropsClosed()
     }
   }

@@ -1,12 +1,13 @@
 <template>
-  <l-circle v-if="center && radius"
-            ref="marker"
-            :key="markerKey"
-            :lat-lng="center"
-            :radius="radius"
-            v-bind="markerConfig"
-            @update:lat-lng="$emit('update', $event)"
-            @click="performAction">
+  <l-circle
+    v-if="center && radius"
+    ref="marker"
+    :key="markerKey"
+    :lat-lng="center"
+    :radius="radius"
+    v-bind="markerConfig"
+    @update:lat-lng="$emit('update', $event)"
+    @click="performAction">
     <l-tooltip v-if="config.label">
       {{ config.label }}
     </l-tooltip>
@@ -15,28 +16,37 @@
 
 <script>
 import { f7 } from 'framework7-vue'
+import { computed } from 'vue'
 
 import { LCircle, LTooltip } from '@vue-leaflet/vue-leaflet'
 
-import mixin from '../widget-mixin'
-import { actionsMixin } from '../widget-actions'
+import { useWidgetContext } from '@/components/widgets/useWidgetContext'
 import { OhMapCircleMarkerDefinition } from '@/assets/definitions/widgets/map'
+import { useWidgetAction } from '@/components/widgets/useWidgetAction.ts'
 
 export default {
-  mixins: [mixin, actionsMixin],
+  props: {
+    context: Object
+  },
   components: {
     LCircle,
     LTooltip
   },
   widget: OhMapCircleMarkerDefinition,
   emits: ['update'],
-  data () {
+  setup(props) {
+    const context = computed(() => props.context)
+    const { config, evaluateExpression } = useWidgetContext(context)
+    const { performAction } = useWidgetAction(context, config, evaluateExpression)
+    return { config, performAction }
+  },
+  data() {
     return {
       markerKey: f7.utils.id()
     }
   },
   computed: {
-    center () {
+    center() {
       if (this.config.item) {
         const itemState = this.context.store[this.config.item]
         if (itemState && itemState.state.indexOf(',') > 0) {
@@ -48,7 +58,7 @@ export default {
       }
       return null
     },
-    radius () {
+    radius() {
       if (this.config.radiusItem) {
         const itemState = this.context.store[this.config.radiusItem]
         if (itemState && !isNaN(parseFloat(itemState.state))) {
@@ -60,7 +70,7 @@ export default {
       }
       return null
     },
-    markerConfig () {
+    markerConfig() {
       if (!this.config) return {}
       let ret = {}
       Object.assign(ret, this.config)
@@ -69,7 +79,7 @@ export default {
       return ret
     }
   },
-  mounted () {
+  mounted() {
     this.$emit('update', this.center, this.radius)
   }
 }

@@ -1,17 +1,12 @@
 <template>
   <f7-page @page:afterin="onPageAfterIn">
     <f7-navbar>
-      <oh-nav-content title="Block Libraries"
-                      back-link="Developer Tools"
-                      back-link-url="/developer/"
-                      :f7router>
+      <oh-nav-content title="Block Libraries" back-link="Developer Tools" back-link-url="/developer/" :f7router>
         <template #right>
-          <f7-link icon-md="material:done_all"
-                   @click="toggleCheck()"
-                   :text="!theme.md ? (showCheckboxes ? 'Done' : 'Select') : ''" />
+          <f7-link icon-md="material:done_all" @click="toggleCheck()" :text="!theme.md ? (showCheckboxes ? 'Done' : 'Select') : ''" />
         </template>
       </oh-nav-content>
-      <f7-subnavbar :inner="false" v-show="initSearchbar">
+      <f7-subnavbar v-show="initSearchbar" :inner="false">
         <f7-searchbar
           v-if="initSearchbar"
           ref="searchbar"
@@ -24,32 +19,31 @@
       </f7-subnavbar>
     </f7-navbar>
 
-    <f7-toolbar v-if="showCheckboxes"
-                class="contextual-toolbar"
-                :class="{ navbar: theme.md }"
-                bottom-ios
-                bottom-aurora>
-      <f7-link v-if="!theme.md"
-               v-show="selectedItems.length"
-               color="red"
-               class="delete"
-               icon-ios="f7:trash"
-               icon-aurora="f7:trash"
-               @click="removeSelected">
-        Remove {{ selectedItems.length }}
-      </f7-link>
-      <f7-link v-if="theme.md"
-               icon-md="material:close"
-               icon-color="white"
-               @click="showCheckboxes = false" />
-      <div v-if="theme.md" class="title">
-        {{ selectedItems.length }} selected
+    <f7-toolbar v-if="showCheckboxes" class="contextual-toolbar" :class="{ navbar: theme.md }" bottom-ios bottom-aurora>
+      <div v-if="!theme.md && selectedItems.length > 0" class="display-flex justify-content-center" style="width: 100%">
+        <f7-link
+          v-if="!theme.md && deletableSelectedItems.length"
+          color="red"
+          class="delete display-flex flex-direction-row margin-right"
+          icon-ios="f7:trash"
+          icon-aurora="f7:trash"
+          @click="removeSelected">
+          Remove {{ deletableSelectedItems.length }}
+        </f7-link>
+        <f7-link
+          color="blue"
+          class="copy display-flex flex-direction-row"
+          icon-ios="f7:square_on_square"
+          icon-aurora="f7:square_on_square"
+          @click="copySelectedItemsToClipboard">
+          &nbsp;Copy {{ selectedItems.length }}
+        </f7-link>
       </div>
-      <div v-if="theme.md" class="right">
-        <f7-link v-show="selectedItems.length"
-                 icon-md="material:delete"
-                 icon-color="white"
-                 @click="removeSelected" />
+      <f7-link v-if="theme.md" icon-md="material:close" icon-color="white" @click="showCheckboxes = false" />
+      <div v-if="theme.md" class="title">{{ selectedItems.length }} selected</div>
+      <div v-if="theme.md && selectedItems.length" class="right">
+        <f7-link v-show="deletableSelectedItems.length" icon-md="material:delete" icon-color="white" @click="removeSelected" />
+        <f7-link tooltip="Copy selected" icon-md="material:content_copy" icon-color="white" @click="copySelectedItemsToClipboard" />
       </div>
     </f7-toolbar>
 
@@ -57,48 +51,41 @@
       <f7-list-item title="Nothing found" />
     </f7-list>
 
-    <!-- skeleton for not ready -->
-    <f7-block class="block-narrow" v-show="!nowidgetEngine">
+    <f7-block v-show="!nowidgetEngine" class="block-narrow">
+      <!-- skeleton for not ready -->
       <f7-col v-show="!ready">
         <f7-block-title>&nbsp;Loading...</f7-block-title>
         <f7-list media-list class="col wide">
           <f7-list-group>
-            <f7-list-item v-for="n in 20"
-                          media-item
-                          :key="n"
-                          :class="`skeleton-text skeleton-effect-blink`"
-                          title="Title of the widget"
-                          subtitle="Tag1, Tag2, Tag3..." />
+            <f7-list-item
+              v-for="n in 20"
+              media-item
+              :key="n"
+              :class="`skeleton-text skeleton-effect-blink`"
+              title="Title of the block library"
+              subtitle="Tag1, Tag2, Tag3..." />
           </f7-list-group>
         </f7-list>
       </f7-col>
       <f7-col v-if="ready">
-        <f7-block-title class="searchbar-hide-on-search">
-          {{ blocks.length }} block libraries
-        </f7-block-title>
-        <f7-list
-          v-show="blocks.length > 0"
-          class="searchbar-found col blocks-list"
-          ref="blocksList"
-          media-list>
-          <f7-list-item v-for="(b, index) in blocks"
-                        :key="index"
-                        media-item
-                        class="blockslist-item"
-                        :checkbox="showCheckboxes"
-                        :checked="isChecked(b.uid) ? true : null"
-                        @click.ctrl="(e) => ctrlClick(e, b)"
-                        @click.meta="(e) => ctrlClick(e, b)"
-                        @click.exact="(e) => click(e, b)"
-                        link=""
-                        :title="b.uid">
+        <f7-block-title class="searchbar-hide-on-search"> {{ blocks.length }} block libraries </f7-block-title>
+        <f7-list v-show="blocks.length > 0" class="searchbar-found col blocks-list" ref="blocksList" media-list>
+          <f7-list-item
+            v-for="(b, index) in blocks"
+            :key="index"
+            media-item
+            class="blockslist-item"
+            :checkbox="showCheckboxes"
+            :checked="isChecked(b.uid) ? true : null"
+            prevent-router
+            @click.ctrl="ctrlClick($event, b)"
+            @click.meta="ctrlClick($event, b)"
+            @click.exact="click($event, b)"
+            :link="`${b.uid}`"
+            :title="b.uid">
             <template #subtitle>
               <div>
-                <f7-chip v-for="tag in b.tags"
-                         :key="tag"
-                         :text="tag"
-                         media-bg-color="blue"
-                         style="margin-right: 6px">
+                <f7-chip v-for="tag in b.tags" :key="tag" :text="tag" media-bg-color="blue" style="margin-right: 6px">
                   <template #media>
                     <f7-icon ios="f7:tag_fill" md="material:label" aurora="f7:tag_fill" />
                   </template>
@@ -108,15 +95,19 @@
             <template #media>
               <span class="item-initial">{{ b.uid[0].toUpperCase() }}</span>
             </template>
+            <template #after>
+              <!-- This is here to push the after-title icon so it would appear immediately after the title
+                    for consistency with Things, Items, and other lists that have the lock icon for non-editable entries -->
+            </template>
+            <template #after-title>
+              <f7-icon v-if="b.editable === false" f7="lock_fill" color="gray" />
+            </template>
           </f7-list-item>
         </f7-list>
       </f7-col>
     </f7-block>
     <template #fixed>
-      <f7-fab v-show="ready && !showCheckboxes"
-              position="right-bottom"
-              color="blue"
-              href="add">
+      <f7-fab v-show="ready && !showCheckboxes" position="right-bottom" color="blue" href="add">
         <f7-icon ios="f7:plus" md="material:add" aurora="f7:plus" />
         <f7-icon ios="f7:close" md="material:close" aurora="f7:close" />
       </f7-fab>
@@ -125,17 +116,21 @@
 </template>
 
 <script>
-import { f7, theme } from 'framework7-vue'
 import { nextTick } from 'vue'
+import { f7, theme } from 'framework7-vue'
+import { showToast } from '@/js/dialog-promises'
+
+import copyToClipboard from '@/js/clipboard'
+import { toFileYAMLSyntax } from '@/pages/yaml-file-format'
 
 export default {
   props: {
     f7router: Object
   },
-  setup () {
+  setup() {
     return { theme }
   },
-  data () {
+  data() {
     return {
       ready: false,
       loading: false,
@@ -147,11 +142,16 @@ export default {
       eventSource: null
     }
   },
+  computed: {
+    deletableSelectedItems() {
+      return this.selectedItems.filter((i) => this.blocks.find((b) => b.uid === i)?.editable !== false)
+    }
+  },
   methods: {
-    onPageAfterIn () {
+    onPageAfterIn() {
       this.load()
     },
-    load () {
+    load() {
       if (this.loading) return
       this.loading = true
       this.$oh.api.get('/rest/ui/components/ui:blocks').then((data) => {
@@ -170,24 +170,24 @@ export default {
         })
       })
     },
-    toggleCheck () {
+    toggleCheck() {
       this.showCheckboxes = !this.showCheckboxes
     },
-    isChecked (item) {
+    isChecked(item) {
       return this.selectedItems.indexOf(item) >= 0
     },
-    click (event, item) {
+    click(event, item) {
       if (this.showCheckboxes) {
         this.toggleItemCheck(event, item.uid, item)
       } else {
         this.f7router.navigate(item.uid, { animate: false })
       }
     },
-    ctrlClick (event, item) {
+    ctrlClick(event, item) {
       this.toggleItemCheck(event, item.uid, item)
       if (!this.selectedItems.length) this.showCheckboxes = false
     },
-    toggleItemCheck (event, item) {
+    toggleItemCheck(event, item) {
       if (!this.showCheckboxes) this.showCheckboxes = true
       if (this.isChecked(item)) {
         this.selectedItems.splice(this.selectedItems.indexOf(item), 1)
@@ -195,37 +195,43 @@ export default {
         this.selectedItems.push(item)
       }
     },
-    removeSelected () {
+    removeSelected() {
       const vm = this
 
       f7.dialog.confirm(
-        `Remove ${this.selectedItems.length} selected block libraries?`,
+        `Remove ${this.deletableSelectedItems.length} selected block librar${this.deletableSelectedItems.length === 1 ? 'y' : 'ies'}?`,
         'Remove block libraries',
         () => {
           vm.doRemoveSelected()
         }
       )
     },
-    doRemoveSelected () {
+    doRemoveSelected() {
       let dialog = f7.dialog.progress('Deleting block libraries...')
 
-      const promises = this.selectedItems.map((i) => this.$oh.api.delete('/rest/ui/components/ui:blocks/' + i))
-      Promise.all(promises).then((data) => {
-        f7.toast.create({
-          text: 'Block library removed',
-          destroyOnClose: true,
-          closeTimeout: 2000
-        }).open()
-        this.selectedItems = []
-        dialog.close()
-        this.load()
-        f7.emit('sidebarRefresh', null)
-      }).catch((err) => {
-        dialog.close()
-        this.load()
-        console.error(err)
-        f7.dialog.alert('An error occurred while deleting: ' + err)
-        f7.emit('sidebarRefresh', null)
+      const promises = this.deletableSelectedItems.map((i) => this.$oh.api.delete('/rest/ui/components/ui:blocks/' + i))
+      Promise.all(promises)
+        .then((data) => {
+          showToast('Block library removed')
+          this.selectedItems = []
+          dialog.close()
+          this.load()
+          f7.emit('sidebarRefresh', null)
+        })
+        .catch((err) => {
+          dialog.close()
+          this.load()
+          console.error(err)
+          f7.dialog.alert('An error occurred while deleting: ' + err)
+          f7.emit('sidebarRefresh', null)
+        })
+    },
+    copySelectedItemsToClipboard() {
+      const itemsToCopy = this.blocks.filter((block) => this.selectedItems.includes(block.uid))
+      const yaml = toFileYAMLSyntax('blocks', itemsToCopy)
+      copyToClipboard(yaml, {
+        onSuccess: () => showToast(`${itemsToCopy.length} block library definitions copied to clipboard`),
+        onError: () => showToast('Failed to copy block library definitions to clipboard')
       })
     }
   }

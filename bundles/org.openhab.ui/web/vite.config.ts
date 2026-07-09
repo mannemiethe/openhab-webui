@@ -1,7 +1,5 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-// import pluginDynamicImportVars from '@rollup/plugin-dynamic-import-vars'
-import pluginDynamicImport from 'vite-plugin-dynamic-import'
 import vitePluginTopLevelAwait from 'vite-plugin-top-level-await'
 import { compression } from 'vite-plugin-compression2'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -12,10 +10,11 @@ import webpackStats from 'rollup-plugin-webpack-stats'
 
 const projectRootDir = resolve(__dirname)
 
-const production = process.env.NODE_ENV === 'production'
+const production: boolean = process.env.NODE_ENV === 'production'
 const apiBaseUrl = process.env.OH_APIBASE || 'http://localhost:8080'
-const maven = process.env.MAVEN || false
-const stats = process.env.STATS || false
+const maven: boolean = !!(process.env.MAVEN || false)
+const stats: boolean = !!(process.env.STATS || false)
+const sourceMaps: boolean = !!(process.env.SOURCE_MAPS || false)
 const outPath = maven ? '../target/classes/app' : 'www'
 
 if (production) {
@@ -25,6 +24,9 @@ if (production) {
 }
 if (stats) {
   console.log(`Build will generate webpack stats file: ${outPath}/webpack-stats.json`)
+}
+if (sourceMaps) {
+  console.log('Build will include source maps.')
 }
 
 export default defineConfig({
@@ -52,17 +54,18 @@ export default defineConfig({
         ]
       }
     },
-    pluginDynamicImport({
-      filter (id) {
-        if (id.includes('/node_modules/')) {
-          return true
-        }
-      }
-    }),
     vitePluginTopLevelAwait(),
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
+        globPatterns: [
+          // default pattern
+          '**/*.{js,wasm,css,html}',
+          // include static assets
+          'images/*.{png,jpg,jpeg,gif,svg}',
+          'media/*.{mp4,webm,ogg,mp3,wav,flac,aac,m4a}',
+          'fonts/*.{woff,woff2,eot,ttf,otf}'
+        ],
         // restrict which URLs should be treated as part of Main UI SPA,
         // thereby controlling which routes are loaded from the service worker cache instead of the server
         navigateFallbackAllowlist: [
@@ -77,21 +80,17 @@ export default defineConfig({
         skipWaiting: true
       }
     }),
-    ...(production ? [
-      compression({
-        algorithms: [
-          'gzip',
-          'brotliCompress'
-        ]
-      })
-    ] : [
-      vueDevtools(),
-      visualizer({ open: false })
-    ]),
-    stats ? webpackStats() : null
+    ...(production
+      ? [compression({ algorithms: ['gzip', 'brotliCompress'] })]
+      : [vueDevtools()]),
+    ...(stats ? [visualizer(), webpackStats()] : [])
   ],
   define: {
     // __VUE_I18N_LEGACY_API__: false // tree-shake legacy mode
+  },
+  optimizeDeps: {
+    // ensure these alre always pre-bundled, including esbuild in the dev server
+    include: ['echarts', 'vue-echarts', 'dayjs']
   },
   server: {
     port: 8081,
@@ -137,6 +136,10 @@ export default defineConfig({
         target: apiBaseUrl,
         ws: true
       },
+      '/ws/audio-pcm': {
+        target: apiBaseUrl,
+        ws: true
+      },
       '/ws/events': {
         target: apiBaseUrl,
         ws: true
@@ -146,7 +149,30 @@ export default defineConfig({
   build: {
     outDir: resolve(outPath),
     emptyOutDir: true,
-    target: ['chrome107', 'edge107', 'firefox104', 'safari11.1'],
+    target: ['chrome111', 'edge111', 'firefox114', 'safari15.4'],
+    sourcemap: sourceMaps ? 'hidden' : false,
+    rolldownOptions: {
+      output: {
+        assetFileNames: (assetInfo) => {
+          const name = assetInfo.name || ''
+          const ext = name.split('.').pop()?.toLowerCase() || ''
+          // Move fonts to fonts/ folder
+          if (['woff', 'woff2', 'eot', 'ttf', 'otf'].includes(ext)) {
+            return 'fonts/[name][extname]'
+          }
+          // Move images to images/ folder
+          if (['png', 'jpg', 'jpeg', 'gif', 'svg'].includes(ext)) {
+            return 'images/[name][extname]'
+          }
+          // Move media to media/ folder
+          if (['mp4', 'webm', 'ogg', 'mp3', 'wav', 'flac', 'aac', 'm4a'].includes(ext)) {
+            return 'media/[name][extname]'
+          }
+          // Default fallback for other assets
+          return 'assets/[name]-[hash][extname]'
+        }
+      }
+    }
   },
   resolve: {
     alias: {

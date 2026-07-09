@@ -1,10 +1,11 @@
 <template>
-  <thing-picker :title="configDescription.label"
-                :value="value"
-                @input="updateValue"
-                :filter-uid="configDescription.options?.map((o) => o.value)"
-                :multiple="configDescription.multiple"
-                :required="configDescription.required" />
+  <thing-picker
+    :title="configDescription.label"
+    :value="value"
+    @input="updateValue"
+    :filter-uid="configDescription.options?.map((o) => o.value)"
+    :multiple="configDescription.multiple"
+    :required="configDescription.required" />
 </template>
 
 <script>
@@ -21,7 +22,7 @@ export default {
     ThingPicker
   },
   methods: {
-    updateValue (value) {
+    updateValue(value) {
       this.$emit('input', value)
     }
   }

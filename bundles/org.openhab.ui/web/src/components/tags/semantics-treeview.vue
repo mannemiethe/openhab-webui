@@ -1,16 +1,17 @@
 <template>
   <f7-treeview class="semantics-treeview">
-    <semantics-treeview-item v-for="(childTag, idx) in rootTags"
-                             :key="idx"
-                             :tag="childTag"
-                             :semanticTags="semanticTags"
-                             :expandedTags="expandedTags"
-                             :showNames="showNames"
-                             :showSynonyms="showSynonyms"
-                             :canDragDrop="!!canDragDrop"
-                             :picker="!!picker"
-                             @selected="tagSelected"
-                             :selectedTag="selectedTag" />
+    <semantics-treeview-item
+      v-for="(childTag, idx) in rootTags"
+      :key="idx"
+      :tag="childTag"
+      :semanticTags="semanticTags"
+      :expandedTags="expandedTags"
+      :showNames="showNames"
+      :showSynonyms="showSynonyms"
+      :canDragDrop="!!canDragDrop"
+      :picker="!!picker"
+      @selected="tagSelected"
+      :selectedTag="selectedTag" />
   </f7-treeview>
 </template>
 
@@ -49,7 +50,7 @@ export default {
   components: {
     SemanticsTreeviewItem
   },
-  setup () {
+  setup() {
     const moveState = reactive({
       moving: false,
       moveDelayedOpen: null,
@@ -59,7 +60,7 @@ export default {
     provide('moveState', moveState)
   },
   computed: {
-    rootTags () {
+    rootTags() {
       const tags = []
       if (this.picker && !this.hideNone) {
         tags.push('None')
@@ -79,11 +80,11 @@ export default {
     }
   },
   methods: {
-    tagSelected (tag) {
+    tagSelected(tag) {
       this.$emit('selected', tag)
     }
   },
-  mounted () {
+  mounted() {
     if (this.propertyMode) {
       this.expandedTags.Property = true
     } else if (this.classMode && this.selectedClass) {

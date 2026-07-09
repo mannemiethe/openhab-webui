@@ -1,23 +1,30 @@
 <template>
   <oh-card :context="context" :content-class="!config.borders ? ['no-padding'] : []">
     <template #content>
-      <oh-webframe :context="childContext(context.component)" />
+      <oh-webframe :context="cardChildContext(context.component)" />
     </template>
   </oh-card>
 </template>
 
 <script>
-import mixin from '../widget-mixin'
+import { computed } from 'vue'
+import { useWidgetContext } from '@/components/widgets/useWidgetContext'
 import OhCard from '@/components/widgets/standard/oh-card.vue'
 import OhWebframe from '../system/oh-webframe.vue'
 import { OhWebFrameCardDefinition } from '@/assets/definitions/widgets/standard/cards'
 
 export default {
-  mixins: [mixin],
+  props: {
+    context: Object
+  },
   components: {
     OhCard,
     OhWebframe
   },
-  widget: OhWebFrameCardDefinition
+  widget: OhWebFrameCardDefinition,
+  setup(props) {
+    const { config, cardChildContext } = useWidgetContext(computed(() => props.context))
+    return { config, cardChildContext }
+  }
 }
 </script>

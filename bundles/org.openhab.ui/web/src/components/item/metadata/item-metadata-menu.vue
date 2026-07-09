@@ -10,10 +10,7 @@
             :title="namespace.label"
             :after="namespace.value || 'Not Set'">
             <template #title>
-              <f7-icon v-if="!namespace.editable"
-                       f7="lock_fill"
-                       size="1rem"
-                       color="gray" />
+              <f7-icon v-if="!namespace.editable" f7="lock_fill" size="1rem" color="gray" />
             </template>
           </f7-list-item>
         </ul>
@@ -26,19 +23,14 @@
             :title="namespace.label"
             :after="namespace.value || 'Not Set'">
             <template #title>
-              <f7-icon v-if="!namespace.editable"
-                       f7="lock_fill"
-                       size="1rem"
-                       color="gray" />
+              <f7-icon v-if="!namespace.editable" f7="lock_fill" size="1rem" color="gray" />
             </template>
           </f7-list-item>
         </ul>
       </f7-list>
     </f7-card-content>
     <f7-card-footer>
-      <f7-button color="blue" @click="addMetadata">
-        Add Metadata
-      </f7-button>
+      <f7-button color="blue" @click="addMetadata"> Add Metadata </f7-button>
     </f7-card-footer>
   </f7-card>
 </template>
@@ -52,19 +44,19 @@ export default {
     item: Object,
     f7router: Object
   },
-  data () {
+  data() {
     return {
       metadataNamespaces: MetadataNamespaces
     }
   },
-  beforeMount () {
-    if ((this.item.type === 'Group')
-      ? (this.item.groupType && this.item.groupType.indexOf('Number:') < 0)
-      : this.item.type.indexOf('Number:') < 0)
+  beforeMount() {
+    if (
+      this.item.type === 'Group' ? this.item.groupType && this.item.groupType.indexOf('Number:') < 0 : this.item.type.indexOf('Number:') < 0
+    )
       this.metadataNamespaces = this.metadataNamespaces.filter((n) => n.name !== 'unit')
   },
   computed: {
-    editableNamespaces () {
+    editableNamespaces() {
       if (!this.item.metadata) return []
       // TODO: determine somehow if other namespaces are not editable
       // (non-managed MetadataProvider)
@@ -79,7 +71,7 @@ export default {
           }
         })
     },
-    wellKnownNamespaces () {
+    wellKnownNamespaces() {
       return this.editableNamespaces
         .filter((n) => this.metadataNamespaces.some((wk) => wk.name === n.name))
         .map((n) => {
@@ -90,7 +82,7 @@ export default {
           }
         })
     },
-    customNamespaces () {
+    customNamespaces() {
       return this.editableNamespaces
         .filter((n) => !this.metadataNamespaces.some((wk) => wk.name === n.name))
         .map((n) => {
@@ -102,37 +94,35 @@ export default {
     }
   },
   methods: {
-    editCustomMetadata () {
-      f7.dialog.prompt('Please type in the namespace you would like to edit:',
-        'Edit Custom Metadata',
-        (namespace) => {
-          if (namespace) f7.views.main.router.navigate('/settings/items/' + this.item.name + '/metadata/' + namespace)
-        })
+    editCustomMetadata() {
+      f7.dialog.prompt('Please type in the namespace you would like to edit:', 'Edit Custom Metadata', (namespace) => {
+        if (namespace) f7.views.main.router.navigate('/settings/items/' + this.item.name + '/metadata/' + namespace)
+      })
     },
-    addMetadata () {
-      f7.actions.create({
-        buttons: [
-          [
-            { label: true, text: 'Well-known namespaces' },
-            ...this.metadataNamespaces.map((n) => {
-              return {
-                text: n.label,
-                color: 'blue',
-                onClick: () => {
-                  this.f7router.navigate('/settings/items/' + this.item.name + '/metadata/' + n.name)
+    addMetadata() {
+      f7.actions
+        .create({
+          buttons: [
+            [
+              { label: true, text: 'Well-known namespaces' },
+              ...this.metadataNamespaces.map((n) => {
+                return {
+                  text: n.label,
+                  color: 'blue',
+                  onClick: () => {
+                    this.f7router.navigate('/settings/items/' + this.item.name + '/metadata/' + n.name)
+                  }
                 }
-              }
-            })
-          ],
-          [
-            { label: true, text: 'Custom namespaces' },
-            { color: 'blue', text: 'Enter Custom Namespace...', onClick: this.editCustomMetadata }
-          ],
-          [
-            { color: 'red', text: 'Cancel', close: true }
+              })
+            ],
+            [
+              { label: true, text: 'Custom namespaces' },
+              { color: 'blue', text: 'Enter Custom Namespace...', onClick: this.editCustomMetadata }
+            ],
+            [{ color: 'red', text: 'Cancel', close: true }]
           ]
-        ]
-      }).open()
+        })
+        .open()
     }
   }
 }

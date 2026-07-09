@@ -6,11 +6,12 @@ import { i18n } from '@/js/i18n'
 import reloadMixin from './reload-mixin'
 
 import { useStatesStore } from '@/js/stores/useStatesStore'
+import { ApiError } from '@/js/hey-api.ts'
 
 export default {
   mixins: [reloadMixin],
 
-  data () {
+  data() {
     return {
       // For the communication failure toast
       communicationFailureToast: null,
@@ -20,7 +21,7 @@ export default {
     }
   },
   methods: {
-    connectionHealthSetup () {
+    connectionHealthSetup() {
       const { sseConnected } = storeToRefs(useStatesStore())
 
       watch(sseConnected, (newValue) => {
@@ -28,11 +29,7 @@ export default {
           if (this.communicationFailureToast === null) {
             this.communicationFailureTimeoutId = setTimeout(() => {
               if (this.communicationFailureToast !== null) return
-              this.communicationFailureToast = this.displayFailureToast(
-                i18n.global.t('error.communicationFailure'),
-                true,
-                false
-              )
+              this.communicationFailureToast = this.displayFailureToast(i18n.global.t('error.communicationFailure'), true, false)
               this.communicationFailureTimeoutId = null
             }, 5000)
           }
@@ -47,30 +44,25 @@ export default {
         }
       })
 
-      const unsubscribeAction = useStatesStore().$onAction(({
-        name,
-        store,
-        args,
-        after,
-        onError
-      }) => {
+      useStatesStore().$onAction(({ name, _store, args, _after, onError }) => {
         onError((error) => {
           if (name === 'sendCommand') {
             let reloadButton = true
             let msg = i18n.global.t('error.communicationFailure')
-            switch (error) {
-              case 404:
-              case 'Not Found':
-                msg = i18n.global.t('error.itemNotFound').replace('%s', args[0])
-                reloadButton = false
-                return this.displayFailureToast(msg, reloadButton)
+            if (error instanceof ApiError) {
+              switch (error.response.status) {
+                case 400:
+                  msg = i18n.global.t('error.invalidCommand').replace('%s', args[0])
+                  reloadButton = false
+                  return this.displayFailureToast(msg, reloadButton)
+                case 404:
+                  msg = i18n.global.t('error.itemNotFound').replace('%s', args[0])
+                  reloadButton = false
+                  return this.displayFailureToast(msg, reloadButton)
+              }
             }
             if (this.communicationFailureToast === null) {
-              this.communicationFailureToast = this.displayFailureToast(
-                i18n.global.t('error.communicationFailure'),
-                true,
-                true
-              )
+              this.communicationFailureToast = this.displayFailureToast(i18n.global.t('error.communicationFailure'), true, true)
               this.communicationFailureToast.on('closed', () => {
                 this.communicationFailureToast = null
               })
@@ -86,13 +78,13 @@ export default {
      * @param {boolean} [autoClose=true] closes toast automatically
      * @returns {Toast.Toast}
      */
-    displayFailureToast (message, reloadButton = false, autoClose = true) {
+    displayFailureToast(message, reloadButton = false, autoClose = true) {
       const toast = f7.toast.create({
         text: message,
         closeButton: reloadButton,
         closeButtonText: i18n.global.t('dialogs.reload'),
         destroyOnClose: true,
-        closeTimeout: (autoClose) ? 5000 : undefined,
+        closeTimeout: autoClose ? 5000 : undefined,
         cssClass: 'failure-toast button-outline',
         position: 'bottom',
         horizontalPosition: 'center'
@@ -104,7 +96,7 @@ export default {
       return toast
     }
   },
-  created () {
+  created() {
     this.checkPurgeServiceWorkerAndCachesAvailable()
     this.connectionHealthSetup()
   }

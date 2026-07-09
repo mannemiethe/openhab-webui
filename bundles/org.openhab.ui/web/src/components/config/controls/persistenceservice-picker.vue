@@ -1,30 +1,31 @@
 <template>
   <ul>
-    <f7-list-item :title="title || 'Persistence Service'"
-                  smart-select
-                  :smart-select-params="smartSelectParams"
-                  v-if="ready"
-                  ref="smartSelect">
-      <select :name="name"
-              :multiple="multiple"
-              @change="select"
-              :required="required">
+    <f7-list-item
+      v-if="ready"
+      :title="title || 'Persistence Service'"
+      smart-select
+      :smart-select-params="smartSelectParams"
+      ref="smartSelect">
+      <select :name="name" :multiple="multiple" @change="select" :required="required">
         <option value="" />
-        <option v-for="service in services"
-                :value="service.id"
-                :key="service.id"
-                :selected="(multiple) ? value.indexOf(service.id) >= 0 : value === service.id ? true : null">
+        <option
+          v-for="service in services"
+          :value="service.id"
+          :key="service.id"
+          :selected="multiple ? value.indexOf(service.id) >= 0 : value === service.id ? true : null">
           {{ service.label }}
         </option>
       </select>
     </f7-list-item>
     <!-- for placeholder purposes before items are loaded -->
-    <f7-list-item link v-show="!ready" :title="title" />
+    <f7-list-item v-show="!ready" link :title="title" />
   </ul>
 </template>
 
 <script>
 import { f7 } from 'framework7-vue'
+
+import * as api from '@/api'
 
 export default {
   props: {
@@ -35,7 +36,7 @@ export default {
     required: Boolean
   },
   emits: ['input'],
-  data () {
+  data() {
     return {
       ready: false,
       service: [],
@@ -46,10 +47,10 @@ export default {
       }
     }
   },
-  created () {
-    this.smartSelectParams.closeOnSelect = !(this.multiple)
+  created() {
+    this.smartSelectParams.closeOnSelect = !this.multiple
     // TODO use a Vuex store
-    this.$oh.api.get('/rest/persistence').then((data) => {
+    api.getPersistenceServices().then((data) => {
       this.services = data.sort((a, b) => {
         const labelA = a.label
         const labelB = b.label
@@ -59,7 +60,7 @@ export default {
     })
   },
   methods: {
-    select (e) {
+    select(e) {
       f7.input.validateInputs(this.$refs.smartSelect.$el)
       this.$emit('input', e.target.value)
     }

@@ -1,38 +1,30 @@
 <template>
-  <f7-nav-left v-if="backLink">
-    <f7-link v-if="!theme.md"
-             icon-f7="chevron_left"
-             :href="backLinkUrl"
-             @click="back">
-      {{ backLink }}
+  <f7-nav-left class="oh-nav-content">
+    <f7-link v-if="menuIcon" class="menu-icon" icon-ios="f7:menu" icon-aurora="f7:menu" icon-md="material:menu" panel-open="left" />
+    <f7-link v-if="!theme.md" icon-f7="chevron_left" :href="backLinkUrl" @click="back">
+      {{ $f7dim.width > 500 ? backLink || t('dialogs.back') : null }}
     </f7-link>
-    <f7-link v-else
-             icon-f7="arrow_left_md"
-             :href="backLinkUrl"
-             @click="back" />
+    <f7-link v-else icon-f7="arrow_left_md" :href="backLinkUrl" @click="back" />
   </f7-nav-left>
   <!-- if large is enabled, we need both the normal and the large title, as the navbar might collapse when scrolling down -->
   <f7-nav-title>
-    {{ title }}
-    <span v-if="subtitle" class="subtitle">{{ subtitle }}</span>
+    {{ title }}<span v-if="subtitle" class="subtitle">{{ subtitle }}</span>
   </f7-nav-title>
   <f7-nav-title-large v-if="large">
-    {{ title }}
-    <span v-if="subtitle" class="subtitle">{{ subtitle }}</span>
+    {{ title }}<span v-if="subtitle" class="subtitle">{{ subtitle }}</span>
   </f7-nav-title-large>
   <f7-nav-right>
     <developer-dock-icon />
-    <f7-link v-if="editable === false"
-             icon-f7="lock_fill"
-             icon-only
-             tooltip="Not editable through the UI" />
+    <f7-link v-if="editable === false" icon-f7="lock_fill" icon-only tooltip="Not editable through the UI" />
     <template v-if="saveLink && (editable === undefined || editable === true)">
-      <f7-link v-if="theme.md"
-               :href="saveLinkUrl"
-               @click="$emit('save')"
-               icon-md="material:save"
-               icon-only />
-      <f7-link v-if="!theme.md" @click="$emit('save')">
+      <f7-link
+        v-if="theme.md"
+        :href="saveLinkUrl"
+        @click="$emit('save')"
+        :class="{ disabled: disableSaveLink }"
+        icon-md="material:save"
+        icon-only />
+      <f7-link v-if="!theme.md" @click="$emit('save')" :class="{ disabled: disableSaveLink }">
         {{ saveLink }}
       </f7-link>
     </template>
@@ -40,6 +32,17 @@
   </f7-nav-right>
   <slot name="after" />
 </template>
+
+<style lang="stylus">
+.aurora .navbar .oh-nav-content.left a + a
+  margin-left: unset
+.ios .navbar .oh-nav-content.left a + a
+  margin-left: unset
+.md .navbar .oh-nav-content.left a + a
+  margin-left: unset
+.navbar .oh-nav-content.left a.menu-icon
+  margin-right: 10px
+</style>
 
 <script setup lang="ts">
 /*
@@ -57,37 +60,46 @@
 import { f7, theme } from 'framework7-vue'
 import type { Router } from 'framework7'
 import DeveloperDockIcon from '@/components/developer/developer-dock-icon.vue'
+import { useI18n } from 'vue-i18n'
 
-const props = withDefaults(defineProps<{
-  title: string,
-  subtitle?: string,
-  backLink?: string,
-  backLinkUrl?: string,
-  editable?: boolean,
-  saveLink?: string,
-  saveLinkUrl?: string,
-  large?: boolean,
-  f7router?: object,
-}>(), {
-  backLink: 'Back',
-  editable: undefined,
-  large: false
-})
+const props = withDefaults(
+  defineProps<{
+    title: string
+    subtitle?: string
+    menuIcon?: boolean
+    backLink?: string
+    backLinkUrl?: string
+    editable?: boolean
+    saveLink?: string
+    saveLinkUrl?: string
+    disableSaveLink?: boolean
+    large?: boolean
+    f7router?: Router.Router
+  }>(),
+  {
+    menuIcon: true,
+    editable: undefined,
+    large: false,
+    disableSaveLink: false
+  }
+)
 
 const emit = defineEmits(['back', 'save'])
 
 defineSlots<{
-  right: void,
-  after: void,
+  right: void
+  after: void
 }>()
 
-function back () {
+const { t } = useI18n({ useScope: 'local' })
+
+function back() {
   if (props.backLinkUrl) return
   if (props.backLinkUrl === null) {
     emit('back')
     return
   }
-  const f7router : Router.Router = props.f7router || f7.views.main.router
+  const f7router: Router.Router = props.f7router || f7.views.main.router
   f7router.back()
 
   /*

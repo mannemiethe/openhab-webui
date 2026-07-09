@@ -6,20 +6,20 @@ import { getAccessToken } from './auth'
  * Interface for the structure of the message payload sent over the WebSocket.
  */
 interface WebSocketMessage {
-  type: string;
-  topic: string;
-  payload: string;
-  source: string;
+  type: string
+  topic: string
+  payload: string
+  source: string
 }
 
 /**
  * A WebSocket that is extended with a keepalive/heartbeat mechanism.
  */
 interface KeepaliveWebSocket extends WebSocket {
-  id: string;
-  keepaliveTimer?: number;
-  setKeepalive: (seconds: number) => void;
-  clearKeepalive: () => void;
+  id: string
+  keepaliveTimer?: number
+  setKeepalive: (seconds: number) => void
+  clearKeepalive: () => void
 }
 
 /**
@@ -27,7 +27,7 @@ interface KeepaliveWebSocket extends WebSocket {
  * @param {string} id WS client id
  * @return {string}
  */
-function heartbeatMessage (id: string): string {
+function heartbeatMessage(id: string): string {
   const message: WebSocketMessage = {
     type: 'WebSocketEvent',
     topic: 'openhab/websocket/heartbeat',
@@ -42,7 +42,7 @@ function heartbeatMessage (id: string): string {
  * @param {string[]} arr array of strings to serialize
  * @returns {string} serialized string
  */
-function arrayToSerialisedString (arr: string[]): string {
+function arrayToSerialisedString(arr: string[]): string {
   return '[' + arr.map((e) => '"' + e + '"').join(',') + ']'
 }
 
@@ -53,7 +53,7 @@ function arrayToSerialisedString (arr: string[]): string {
  * @param {string[]} sources event sources to exclude
  * @return {string}
  */
-function eventSourceFilterMessage (id: string, sources: string[]): string {
+function eventSourceFilterMessage(id: string, sources: string[]): string {
   const message: WebSocketMessage = {
     type: 'WebSocketEvent',
     topic: 'openhab/websocket/filter/source',
@@ -70,7 +70,7 @@ function eventSourceFilterMessage (id: string, sources: string[]): string {
  * @param {string[]} types event types to include
  * @return {string}
  */
-function eventTypeFilterMessage (id: string, types: string[]): string {
+function eventTypeFilterMessage(id: string, types: string[]): string {
   const message: WebSocketMessage = {
     type: 'WebSocketEvent',
     topic: 'openhab/websocket/filter/type',
@@ -87,7 +87,7 @@ function eventTypeFilterMessage (id: string, types: string[]): string {
  * @param {string[]} topics event topics to include
  * @returns {string}
  */
-function eventTopicFilterMessage (id: string, topics: string[]): string {
+function eventTopicFilterMessage(id: string, topics: string[]): string {
   const message: WebSocketMessage = {
     type: 'WebSocketEvent',
     topic: 'openhab/websocket/filter/topic',
@@ -99,36 +99,39 @@ function eventTopicFilterMessage (id: string, topics: string[]): string {
 
 const openWSConnections: KeepaliveWebSocket[] = []
 
-type MessageCallback = (data: WebSocketMessage) => void;
-type ReadyCallback = (event: Event) => void;
-type ErrorCallback = (event: Event) => void;
-type HeartbeatCallback = () => void;
-type CloseCallback = (event: CloseEvent) => void;
+export type MessageCallback = (data: WebSocketMessage) => void
+export type ReadyCallback = (event: Event) => void
+export type ErrorCallback = (event: Event) => void
+export type HeartbeatCallback = () => void
+export type CloseCallback = (event: CloseEvent) => void
 
 /**
  * Creates a new {@link KeepaliveWebSocket} connection.
  * @param path the path to connect to, e.g. `/ws`
  * @param messageCallback the callback to handle incoming messages
  * @param readyCallback the callback to handle the connection being ready
+ * @param closeCallback the callback to handle the connection being closed
  * @param errorCallback the callback to handle errors
  * @param heartbeatCallback the callback to handle heartbeats
  * @param heartbeatInterval the interval in seconds for sending heartbeats
  */
-function newWSConnection (
+function newWSConnection(
   path: string,
   messageCallback: MessageCallback,
   readyCallback: ReadyCallback | undefined,
+  closeCallback: CloseCallback | undefined,
   errorCallback: ErrorCallback | undefined,
   heartbeatCallback: HeartbeatCallback | undefined,
   heartbeatInterval: number
 ): KeepaliveWebSocket {
-  const encodedToken = btoa(getAccessToken()).replace(/=*$/, '')
+  const accessToken = getAccessToken()
+  const encodedToken = accessToken ? btoa(accessToken).replace(/=*$/, '') : null
 
   // Create a new WebSocket connection and set the access token through the protocol field
-  const socket = new WebSocket(path, [
-    `org.openhab.ws.accessToken.base64.${encodedToken}`,
-    'org.openhab.ws.protocol.default'
-  ]) as KeepaliveWebSocket
+  const socket = new WebSocket(
+    path,
+    encodedToken ? [`org.openhab.ws.accessToken.base64.${encodedToken}`, 'org.openhab.ws.protocol.default'] : []
+  ) as KeepaliveWebSocket
 
   socket.id = 'ui-' + f7.utils.id()
 
@@ -154,12 +157,22 @@ function newWSConnection (
     if (readyCallback) readyCallback(event)
   }
 
+  // Handle WebSocket connection closed
+  socket.onclose = (event: CloseEvent) => {
+    socket.clearKeepalive()
+    const index = openWSConnections.indexOf(socket)
+    if (index >= 0) {
+      openWSConnections.splice(index, 1)
+    }
+    if (closeCallback) closeCallback(event)
+  }
+
   // Handle WebSocket message received
   socket.onmessage = (event: MessageEvent) => {
     let evt: WebSocketMessage
     try {
       // The message is expected to be JSON, but we handle the case where it's not.
-      evt = JSON.parse(event.data)
+      evt = JSON.parse(event.data as string) as WebSocketMessage
     } catch (e) {
       console.error('Error while parsing message', e)
       return
@@ -192,18 +205,20 @@ const WebSocketService = {
    * @param messageCallback message callback to handle incoming messages
    * @param heartbeatCallback heartbeat callback
    * @param readyCallback ready callback
+   * @param closeCallback close callback
    * @param errorCallback error callback
    * @param heartbeatInterval heartbeat interval in seconds (defaults to 5)
    */
-  connect (
+  connect(
     path: string,
     messageCallback: MessageCallback,
     heartbeatCallback: HeartbeatCallback,
     readyCallback?: ReadyCallback,
+    closeCallback?: CloseCallback,
     errorCallback?: ErrorCallback,
     heartbeatInterval: number = 5
   ): KeepaliveWebSocket {
-    return newWSConnection(path, messageCallback, readyCallback, errorCallback, heartbeatCallback, heartbeatInterval)
+    return newWSConnection(path, messageCallback, readyCallback, closeCallback, errorCallback, heartbeatCallback, heartbeatInterval)
   },
   /**
    * Connect to the event WebSocket, which provides direct access to the EventBus.
@@ -212,12 +227,14 @@ const WebSocketService = {
    * @param topics array of event topics to filter by, if empty all events are received
    * @param messageCallback message callback to handle incoming messages
    * @param readyCallback ready callback
+   * @param closeCallback close callback
    * @param errorCallback error callback
    */
-  events (
+  events(
     topics: string[],
     messageCallback: MessageCallback,
     readyCallback?: ReadyCallback,
+    closeCallback?: CloseCallback,
     errorCallback?: ErrorCallback
   ): KeepaliveWebSocket {
     let socket: KeepaliveWebSocket
@@ -245,13 +262,7 @@ const WebSocketService = {
       socket.send(heartbeatMessage(socket.id))
     }
 
-    socket = this.connect(
-      '/ws/events',
-      extendedMessageCallback,
-      heartbeatCallback,
-      extendedReadyCallback,
-      errorCallback
-    )
+    socket = this.connect('/ws/events', extendedMessageCallback, heartbeatCallback, extendedReadyCallback, closeCallback, errorCallback)
 
     return socket
   },
@@ -261,29 +272,14 @@ const WebSocketService = {
    * @param socket the WebSocket connection to close
    * @param callback callback to execute on connection close
    */
-  close (
-    socket: WebSocket,
-    callback?: CloseCallback): void {
+  close(socket: WebSocket, callback?: CloseCallback): void {
     if (!socket) return
 
     const keepaliveWebSocket = socket as KeepaliveWebSocket
-
-    const index = openWSConnections.indexOf(keepaliveWebSocket)
-    if (index >= 0) {
-      openWSConnections.splice(index, 1)
-    }
+    keepaliveWebSocket.close()
 
     console.debug(`WS connection closed: ${keepaliveWebSocket.url}, ${openWSConnections.length} open connections`)
     console.debug(openWSConnections)
-
-    keepaliveWebSocket.onclose = (event: CloseEvent) => {
-      if (callback) {
-        callback(event)
-      }
-    }
-
-    keepaliveWebSocket.clearKeepalive()
-    keepaliveWebSocket.close()
   }
 }
 

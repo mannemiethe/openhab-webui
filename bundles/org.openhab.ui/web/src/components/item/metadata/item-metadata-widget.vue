@@ -7,47 +7,48 @@
     </f7-block>
 
     <f7-block-header v-if="!editable" class="padding-horizontal">
-      <b style="color: var(--f7-theme-color) !important;">INFO: This metadata is not editable as it has not been created through the UI.
-        <br>You can try out changes here, but you cannot save them.</b>
+      <b style="color: var(--f7-theme-color) !important"
+        >INFO: This metadata is not editable as it has not been created through the UI. <br />You can try out changes here, but you cannot
+        save them.</b
+      >
     </f7-block-header>
     <f7-list v-if="defaultComponent.component">
-      <f7-list-item :title="'Widget'"
-                    smart-select
-                    :smart-select-params="{ openIn: 'popup', searchbar: true, closeOnSelect: true, scrollToSelectedItem: true }"
-                    ref="widgets">
+      <f7-list-item
+        :title="'Widget'"
+        smart-select
+        :smart-select-params="{ openIn: 'popup', searchbar: true, closeOnSelect: true, scrollToSelectedItem: true }"
+        ref="widgets">
         <select name="widgets" @change="updateComponent">
-          <option value="">
-            Default ({{ defaultComponent.component }})
-          </option>
-          <optgroup label="Standard Library (List)" v-if="namespace === 'listWidget'">
-            <option v-for="widget in standardListWidgets"
-                    :key="widget.name"
-                    :value="widget.name"
-                    :selected="metadata.value === widget.name ? true : null">
+          <option value="">Default ({{ defaultComponent.component }})</option>
+          <optgroup v-if="namespace === 'listWidget'" label="Standard Library (List)">
+            <option
+              v-for="widget in standardListWidgets"
+              :key="widget.name"
+              :value="widget.name"
+              :selected="metadata.value === widget.name ? true : null">
               {{ widget.label }}
             </option>
           </optgroup>
-          <optgroup label="Standard Library (Cell)" v-else-if="namespace === 'cellWidget'">
-            <option v-for="widget in standardCellWidgets"
-                    :key="widget.name"
-                    :value="widget.name"
-                    :selected="metadata.value === widget.name">
+          <optgroup v-else-if="namespace === 'cellWidget'" label="Standard Library (Cell)">
+            <option
+              v-for="widget in standardCellWidgets"
+              :key="widget.name"
+              :value="widget.name"
+              :selected="metadata.value === widget.name">
               {{ widget.label }}
             </option>
           </optgroup>
-          <optgroup label="Standard Library" v-else>
-            <option v-for="widget in standardWidgets"
-                    :key="widget.name"
-                    :value="widget.name"
-                    :selected="metadata.value === widget.name">
+          <optgroup v-else label="Standard Library">
+            <option v-for="widget in standardWidgets" :key="widget.name" :value="widget.name" :selected="metadata.value === widget.name">
               {{ widget.label }}
             </option>
           </optgroup>
           <optgroup v-if="componentsStore.widgets().length" label="Personal Widgets">
-            <option v-for="widget in personalWidgets"
-                    :value="'widget:' + widget.uid"
-                    :key="widget.uid"
-                    :selected="metadata.value.replace('widget:', '') === widget.uid ? true : null">
+            <option
+              v-for="widget in personalWidgets"
+              :value="'widget:' + widget.uid"
+              :key="widget.uid"
+              :selected="metadata.value.replace('widget:', '') === widget.uid ? true : null">
               {{ widget.uid }}
             </option>
           </optgroup>
@@ -60,16 +61,20 @@
     <div v-if="configDescriptions.parameters" class="widget-metadata-config-sheet">
       <f7-block-title>Configuration</f7-block-title>
       <f7-block-footer class="padding-horizontal margin-bottom">
-        Note: the parameter named 'item' will be set automatically with the name of the item ({{ this.item.name }}) unless it's set explicitely.
+        Note: the parameter named 'item' will be set automatically with the name of the item ({{ this.item.name }}) unless it's set
+        explicitely.
       </f7-block-footer>
-      <f7-block-footer v-if="currentComponent.component && currentComponent.component.indexOf('widget:') === 0" class="padding-horizontal margin-bottom">
+      <f7-block-footer
+        v-if="currentComponent.component && currentComponent.component.indexOf('widget:') === 0"
+        class="padding-horizontal margin-bottom">
         Make sure the personal widget is of the expected type (cell, list item or standalone).
       </f7-block-footer>
-      <config-sheet :parameterGroups="configDescriptions.parameterGroups"
-                    :parameters="configDescriptions.parameters"
-                    :configuration="metadata.config"
-                    @updated="widgetConfigUpdated"
-                    :set-empty-config-as-null="true" />
+      <config-sheet
+        :parameterGroups="configDescriptions.parameterGroups"
+        :parameters="configDescriptions.parameters"
+        :configuration="metadata.config"
+        @updated="widgetConfigUpdated"
+        :set-empty-config-as-null="true" />
     </div>
   </div>
 </template>
@@ -116,30 +121,52 @@ export default {
   components: {
     ConfigSheet
   },
-  data () {
+  data() {
     return {
       defaultComponent: {},
       currentComponent: {},
       previewContext: {},
       previewWidgetKey: f7.utils.id(),
-      standardWidgets: Object.values(StandardWidgets).filter((c) => c.widget).map((c) => c.widget()).sort((a, b) => { return a.name.localeCompare(b.name) }),
-      standardListWidgets: Object.values(StandardListWidgets).filter((c) => c.widget && typeof c.widget === 'function').map((c) => c.widget()).sort((a, b) => { return a.name.localeCompare(b.name) }),
-      standardCellWidgets: Object.values(StandardCellWidgets).filter((c) => c.widget && typeof c.widget === 'function').map((c) => c.widget()).sort((a, b) => { return a.name.localeCompare(b.name) }),
-      systemWidgets: Object.values(SystemWidgets).filter((c) => c.widget & typeof c.widget === 'function').map((c) => c.widget()).sort((a, b) => { return a.name.localeCompare(b.name) }),
+      standardWidgets: Object.values(StandardWidgets)
+        .filter((c) => c.widget)
+        .map((c) => c.widget())
+        .sort((a, b) => {
+          return a.name.localeCompare(b.name)
+        }),
+      standardListWidgets: Object.values(StandardListWidgets)
+        .filter((c) => c.widget && typeof c.widget === 'function')
+        .map((c) => c.widget())
+        .sort((a, b) => {
+          return a.name.localeCompare(b.name)
+        }),
+      standardCellWidgets: Object.values(StandardCellWidgets)
+        .filter((c) => c.widget && typeof c.widget === 'function')
+        .map((c) => c.widget())
+        .sort((a, b) => {
+          return a.name.localeCompare(b.name)
+        }),
+      systemWidgets: Object.values(SystemWidgets)
+        .filter((c) => c.widget & (typeof c.widget === 'function'))
+        .map((c) => c.widget())
+        .sort((a, b) => {
+          return a.name.localeCompare(b.name)
+        }),
       widgetVars: {},
       configDescriptions: {}
     }
   },
   computed: {
-    personalWidgets () {
-      return [...useComponentsStore().widgets()].sort((a, b) => { return a.uid.localeCompare(b.uid) })
+    personalWidgets() {
+      return [...useComponentsStore().widgets()].sort((a, b) => {
+        return a.uid.localeCompare(b.uid)
+      })
     },
-    placeholderTextType () {
+    placeholderTextType() {
       return getDefaultInputType(this.item.type)
     },
     ...mapStores(useComponentsStore)
   },
-  mounted () {
+  mounted() {
     useStatesStore().startTrackingStates()
     // copy the item & remove the metadata to get the default widget
     const defaultItem = Object.assign({}, this.item)
@@ -147,22 +174,24 @@ export default {
       delete defaultItem.metadata[this.namespace]
     }
     this.defaultComponent =
-      (this.namespace === 'cellWidget') ? itemDefaultCellComponent(defaultItem)
-        : (this.namespace === 'listWidget') ? itemDefaultListComponent(defaultItem)
+      this.namespace === 'cellWidget'
+        ? itemDefaultCellComponent(defaultItem)
+        : this.namespace === 'listWidget'
+          ? itemDefaultListComponent(defaultItem)
           : itemDefaultStandaloneComponent(defaultItem)
 
     nextTick(() => {
       this.updateComponent()
     })
   },
-  beforeUnmount () {
+  beforeUnmount() {
     useStatesStore().stopTrackingStates()
   },
   methods: {
-    isSelected (cl) {
+    isSelected(cl) {
       return this.component === cl
     },
-    setPreviewContext () {
+    setPreviewContext() {
       // create new object to be reactive
       this.previewContext = {}
       this.previewContext.store = useStatesStore().trackedItems
@@ -190,7 +219,7 @@ export default {
         this.previewContext.component = this.currentComponent
       }
     },
-    setCurrentComponent () {
+    setCurrentComponent() {
       if (!this.metadata.value || this.metadata.value === ' ') {
         this.currentComponent = Object.assign({}, this.defaultComponent)
         if (typeof this.metadata.config === 'object') {
@@ -204,10 +233,12 @@ export default {
         if (!this.currentComponent.config.item) this.currentComponent.config.item = this.item.name
       }
     },
-    setConfigDescriptions () {
+    setConfigDescriptions() {
       let desc = {}
       if (!this.currentComponent || !this.currentComponent.component) return desc
-      const widget = useComponentsStore().widgets().find((w) => w.uid === this.currentComponent.component.replace('widget:', ''))
+      const widget = useComponentsStore()
+        .widgets()
+        .find((w) => w.uid === this.currentComponent.component.replace('widget:', ''))
       if (widget && widget.props) desc = Object.assign({}, widget.props)
 
       if (this.namespace === 'listWidget') {
@@ -247,14 +278,14 @@ export default {
 
       this.configDescriptions = desc
     },
-    updateComponent () {
+    updateComponent() {
       const value = this.$refs.widgets.$el.children[0].f7SmartSelect.getValue()
       this.metadata.value = value || ' ' // ' ' is used to indicate the default widget
       this.setCurrentComponent()
       this.setConfigDescriptions()
       this.setPreviewContext()
     },
-    widgetConfigUpdated () {
+    widgetConfigUpdated() {
       for (let key in this.metadata.config) {
         // set to '' when the default defines the option but the metadata doesn't (null would be better but the API then removes it)
         if (!this.metadata.config[key] && typeof this.defaultComponent.config[key] === 'string') this.metadata.config[key] = ''

@@ -1,59 +1,70 @@
 <template>
-  <f7-list-button v-if="config.listButton && !context.editmode"
-                  :title="config.title || 'Action'"
-                  :color="config.color || 'blue'"
-                  @click.stop="performAction" />
-  <f7-list-item v-else-if="config.divider && !context.editmode"
-                divider
-                ref="divider"
-                :title="config.title" />
-  <f7-list-item v-else
-                v-bind="config"
-                :divider="config.divider && !context.editmode"
-                :media-item="context.parent.component.config.mediaList && !config.divider"
-                :badge="(config.divider) ? 'Divider' : (config.listButton) ? 'List button' : config.badge"
-                :accordion-item="isRegularAccordion && !config.divider && !context.editmode"
-                :link="(hasAction && !context.editmode) ? true : undefined"
-                @click.stop="openAccordionOrPerformAction"
-                :class="{ 'oh-equipment-accordion-item': isEquipmentAccordion }"
-                ref="f7AccordionContent">
-    <template #inner v-if="$slots.inner">
+  <f7-list-button
+    v-if="config.listButton && !context.editmode"
+    :title="config.title || 'Action'"
+    :color="config.color || 'blue'"
+    @click.stop="performAction" />
+  <f7-list-item v-else-if="config.divider && !context.editmode" divider ref="divider" :title="config.title" />
+  <f7-list-item
+    v-else
+    v-bind="config"
+    :divider="config.divider && !context.editmode"
+    :media-item="context.parent.component.config.mediaList && !config.divider"
+    :badge="config.divider ? 'Divider' : config.listButton ? 'List button' : config.badge"
+    :accordion-item="isRegularAccordion && !config.divider && !context.editmode"
+    :link="hasAction && !context.editmode ? true : undefined"
+    @click.stop="openAccordionOrPerformAction"
+    :class="{ 'oh-equipment-accordion-item': isEquipmentAccordion }"
+    ref="f7AccordionContent">
+    <template v-if="$slots.inner" #inner>
       <slot name="inner" />
     </template>
-    <template #content v-if="$slots.content">
+    <template v-if="$slots.content" #content>
       <slot name="content" />
     </template>
-    <template #root-end v-if="$slots['root-end']">
+    <template v-if="$slots['root-end']" #root-end>
       <slot name="root-end" />
     </template>
-    <template #footer v-if="$slots.footer">
+    <template v-if="$slots.footer" #footer>
       <slot name="footer" />
     </template>
-    <template #after v-if="$slots.after">
-      <slot name="after" />
+    <template v-if="$slots.after || context.component.slots?.after?.length" #after>
+      <template v-if="context.component.slots?.after?.length">
+        <generic-widget-component :context="childContext(context.component.slots.after[0])" />
+      </template>
+      <template v-if="$slots.after">
+        <slot name="after" />
+      </template>
     </template>
-    <template #after v-if="context.component.slots && context.component.slots.after && context.component.slots.after.length">
-      <generic-widget-component v-bind="$attrs" :context="childContext(context.component.slots.after[0])" />
-    </template>
-    <f7-accordion-content v-if="context.parent.component.config.accordionList && !context.editmode">
-      <generic-widget-component v-if="isRegularAccordion"
-                                v-bind="$attrs"
-                                :context="childContext(context.component.slots.accordion[0])" />
+    <f7-accordion-content v-if="isRegularAccordion && !context.editmode">
+      <generic-widget-component :context="childContext(accordionSlots[0])" />
     </f7-accordion-content>
     <template #root>
       <f7-accordion-content v-if="isEquipmentAccordion && !context.editmode">
-        <generic-widget-component v-bind="$attrs" :context="childContext(context.component.slots.accordion[0])" />
+        <generic-widget-component :context="childContext(accordionSlots[0])" />
       </f7-accordion-content>
     </template>
-    <template #media v-if="$slots.media || config.icon || (config.fallbackIconToInitial && config.title && context.parent.component.config && context.parent.component.config.mediaList)">
-      <oh-icon v-if="config.icon"
-               :icon="config.icon"
-               height="32"
-               width="32"
-               :color="config.iconColor"
-               :state="config.item && config.iconUseState ? context.store[config.item].state : null" />
-      <span v-else-if="config.fallbackIconToInitial && config.title && context.parent.component.config && context.parent.component.config.mediaList"
-            class="item-initial">{{ config.title[0].toUpperCase() }}</span>
+    <template
+      v-if="
+        $slots.media ||
+        config.icon ||
+        (config.fallbackIconToInitial && config.title && context.parent.component.config && context.parent.component.config.mediaList)
+      "
+      #media>
+      <oh-icon
+        v-if="config.icon"
+        :icon="config.icon"
+        height="32"
+        width="32"
+        :color="config.iconColor"
+        :state="config.item && config.iconUseState ? context.store[config.item].state : null" />
+      <span
+        v-else-if="
+          config.fallbackIconToInitial && config.title && context.parent.component.config && context.parent.component.config.mediaList
+        "
+        class="item-initial"
+        >{{ config.title[0].toUpperCase() }}</span
+      >
     </template>
   </f7-list-item>
 </template>
@@ -147,72 +158,48 @@
 </style>
 
 <script>
-import { nextTick } from 'vue'
 import { f7 } from 'framework7-vue'
+import { computed } from 'vue'
 
-import mixin from '../../widget-mixin'
-import { actionsMixin } from '../../widget-actions'
+import { useWidgetContext } from '@/components/widgets/useWidgetContext'
 import { OhListItemDefinition } from '@/assets/definitions/widgets/standard/listitems'
+import { useWidgetAction } from '@/components/widgets/useWidgetAction.ts'
 
 export default {
   name: 'oh-list-item',
-  mixins: [mixin, actionsMixin],
+  props: {
+    context: Object
+  },
   widget: OhListItemDefinition,
+  setup(props) {
+    const context = computed(() => props.context)
+    const { config, childContext, evaluateExpression, hasAction, slots } = useWidgetContext(context)
+    const { performAction } = useWidgetAction(context, config, evaluateExpression)
+    return { config, childContext, hasAction, slots, performAction }
+  },
   computed: {
-    isEquipmentAccordion () {
-      return this.context.parent.component.config.accordionEquipment && this.context.component.slots && this.context.component.slots.accordion && this.context.component.slots.accordion.length
+    isEquipmentAccordion() {
+      return this.context.parent.component.config.accordionEquipment && this.accordionSlots.length > 0
     },
-    isRegularAccordion () {
-      return this.context.parent.component.config.accordionList && this.context.component.slots && this.context.component.slots.accordion && this.context.component.slots.accordion.length
+    isRegularAccordion() {
+      return this.context.parent.component.config.accordionList && this.accordionSlots.length > 0
+    },
+    accordionSlots() {
+      if (!this.context.component.slots?.accordion?.length) return []
+      return this.context.component.slots.accordion
     }
   },
-  mounted () {
-    mixin.mounted.call(this)
-    if (this.config.divider && !this.context.editmode) {
-      nextTick(() => {
-        this.trimTitle()
-      })
-    }
-  },
-  created () {
+  created() {
     if (this.config.divider && !this.context.editmode) {
       window.addEventListener('resize', this.duringResize)
     }
   },
-  unmounted () {
-    window.removeEventListener('resize', this.duringResize)
-    if (this.timer) clearTimeout(this.timer)
-  },
   methods: {
-    openAccordionOrPerformAction () {
+    openAccordionOrPerformAction() {
       if (this.isEquipmentAccordion) {
         f7.accordion.toggle(this.$refs.f7AccordionContent.$el)
       } else {
         this.performAction()
-      }
-    },
-    duringResize () {
-      if (this.timer) clearTimeout(this.timer)
-      this.timer = setTimeout(this.resized, 200)
-    },
-    resized () {
-      if (this.$refs.divider && this.$refs.divider.$el && this.$refs.divider.$el.firstChild) {
-        this.$refs.divider.$el.firstChild.textContent = this.config.title
-      }
-      this.trimTitle()
-    },
-    trimTitle () {
-      if (this.$refs.divider && this.$refs.divider.$el && this.$refs.divider.$el.firstChild) {
-        let element = this.$refs.divider.$el.firstChild
-        let trimCount = 0
-        if (element.scrollWidth > element.offsetWidth) {
-          let value = '…' + element.textContent
-          do {
-            value = '…' + value.slice(2)
-            trimCount++
-            element.textContent = value
-          } while (element.scrollWidth > element.offsetWidth && trimCount < 100)
-        }
       }
     }
   }

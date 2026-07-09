@@ -1,28 +1,21 @@
 <template>
-  <f7-popup ref="widgetConfig"
-            class="widgetconfig-popup"
-            :close-by-backdrop-click="false"
-            @popup:opened="widgetConfigOpened"
-            @popup:closed="widgetConfigClosed">
+  <f7-popup
+    ref="widgetConfig"
+    class="widgetconfig-popup"
+    :close-by-backdrop-click="false"
+    @popup:opened="widgetConfigOpened"
+    @popup:closed="widgetConfigClosed">
     <f7-page v-if="component && widget">
       <f7-navbar ref="navbar">
         <f7-nav-left>
-          <f7-link icon-ios="f7:arrow_left"
-                   icon-md="material:arrow_back"
-                   icon-aurora="f7:arrow_left"
-                   @click="closeWithDirtyCheck" />
+          <f7-link icon-ios="f7:arrow_left" icon-md="material:arrow_back" icon-aurora="f7:arrow_left" @click="closeWithDirtyCheck" />
         </f7-nav-left>
-        <f7-nav-title>Edit {{ widget.label || widget.uid }}{{ dirtyIndicator }}</f7-nav-title>
+        <f7-nav-title v-if="!readOnly">Edit {{ widget.label || widget.uid }}{{ dirtyIndicator }}</f7-nav-title>
+        <f7-nav-title v-else>View {{ widget.label || widget.uid }} <f7-icon f7="lock_fill" size="12" color="gray" /></f7-nav-title>
         <f7-nav-right>
-          <f7-link v-if="dirty" @click="reset">
-            Reset
-          </f7-link>
-          <f7-link v-if="dirty" @click="save">
-            Save
-          </f7-link>
-          <f7-link v-else popup-close>
-            Close
-          </f7-link>
+          <f7-link v-if="!readOnly && dirty" @click="reset"> Reset </f7-link>
+          <f7-link v-if="!readOnly && dirty" @click="save"> Save </f7-link>
+          <f7-link v-else popup-close> Close </f7-link>
         </f7-nav-right>
       </f7-navbar>
       <f7-block v-if="widget.props && config" class="no-margin no-padding">
@@ -31,6 +24,8 @@
             :parameterGroups="widget.props.parameterGroups || []"
             :parameters="widget.props.parameters || []"
             :configuration="config"
+            :read-only="readOnly"
+            :set-empty-array-as-array="true"
             @updated="updated" />
         </f7-col>
       </f7-block>
@@ -47,23 +42,32 @@
 import { f7 } from 'framework7-vue'
 
 import ConfigSheet from '@/components/config/config-sheet.vue'
-import DirtyMixin from '@/pages/settings/dirty-mixin'
 import cloneDeep from 'lodash/cloneDeep'
 import fastDeepEqual from 'fast-deep-equal/es6'
 import MovablePopupMixin from '@/pages/settings/movable-popup-mixin'
 
+import { useDirty, confirmLeaveWithoutSaving } from '@/pages/useDirty'
+
 export default {
-  mixins: [DirtyMixin, MovablePopupMixin],
+  mixins: [MovablePopupMixin],
   props: {
     opened: Boolean,
     component: Object,
-    widget: Object
+    widget: Object,
+    readOnly: Boolean
   },
   components: {
     ConfigSheet
   },
   emits: ['closed', 'update'],
-  data () {
+  setup() {
+    const { dirty, dirtyIndicator } = useDirty(null)
+    return {
+      dirty,
+      dirtyIndicator
+    }
+  },
+  data() {
     return {
       originalConfig: null,
       updateTimer: null,
@@ -72,57 +76,59 @@ export default {
     }
   },
   methods: {
-    widgetConfigOpened () {
+    widgetConfigOpened() {
       this.config = cloneDeep(this.component.config)
       this.originalConfig = cloneDeep(this.component.config)
       this.initializeMovablePopup(this.$refs.widgetConfig, this.$refs.navbar)
       window.addEventListener('keydown', this.onKeydown)
     },
-    widgetConfigClosed () {
+    widgetConfigClosed() {
       this.cleanupMovablePopup()
       window.removeEventListener('keydown', this.onKeydown)
       f7.emit('widgetConfigClosed')
       this.$emit('closed')
     },
-    onKeydown (evt) {
+    onKeydown(evt) {
       if (evt.key === 'Escape' && !this.leaveCancelled) {
         this.closeWithDirtyCheck()
       }
     },
-    closeWithDirtyCheck () {
+    async closeWithDirtyCheck() {
       if (this.dirty) {
-        const dialog = this.confirmLeaveWithoutSaving(
-          () => {
-            this.updateWidgetConfig(this.originalConfig)
-            this.$refs.widgetConfig.$el.f7Modal.close()
-          },
-          () => {
-            // prevent re-triggering the confirm dialog when ESC is pressed to close the dialog
-            this.leaveCancelled = true
-            setTimeout(() => { this.leaveCancelled = false }, 100)
-          }
-        )
+        if (await confirmLeaveWithoutSaving()) {
+          this.updateWidgetConfig(this.originalConfig)
+          this.$refs.widgetConfig.$el.f7Modal.close()
+        } else {
+          // prevent re-triggering the confirm dialog when ESC is pressed to close the dialog
+          this.leaveCancelled = true
+          setTimeout(() => {
+            this.leaveCancelled = false
+          }, 100)
+        }
       } else {
         this.$refs.widgetConfig.$el.f7Modal.close()
       }
     },
-    reset () {
+    reset() {
+      if (this.readOnly) return
       f7.dialog.confirm('Do you want to revert your changes?', 'Revert Changes', () => {
         this.config = cloneDeep(this.originalConfig)
         this.updateWidgetConfig(this.originalConfig)
         this.dirty = false
       })
     },
-    save () {
+    save() {
+      if (this.readOnly) return
       this.updateWidgetConfig(this.config)
       this.$refs.widgetConfig.$el.f7Modal.close()
     },
-    updateWidgetConfig (config) {
+    updateWidgetConfig(config) {
       const newConfig = cloneDeep(config)
       f7.emit('widgetConfigUpdate', newConfig)
       this.$emit('update', newConfig)
     },
-    updated () {
+    updated() {
+      if (this.readOnly) return
       this.dirty = !fastDeepEqual(this.config, this.originalConfig)
       clearTimeout(this.updateTimer)
       this.updateTimer = setTimeout(() => {

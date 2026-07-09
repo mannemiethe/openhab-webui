@@ -1,17 +1,14 @@
 <template>
   <div :style="pageStyle">
-    <div class="hint-apps" v-if="!overviewPage && !userStore.user && !showHABot">
+    <div v-if="!overviewPage && !userStore.user && !showHABot" class="hint-apps">
       <p>
         <em>
-          <f7-icon
-            class="float-right margin-left margin-bottom"
-            f7="arrow_turn_right_up"
-            size="20" />{{ $t('home.tip.otherApps') }}
+          <f7-icon class="float-right margin-left margin-bottom" f7="arrow_turn_right_up" size="20" />{{ $t('home.tip.otherApps') }}
         </em>
       </p>
     </div>
-    <f7-block class="block-narrow">
-      <habot v-if="showHABot" @session-started="inChatSession = true" @session-end="inChatSession = false" />
+    <f7-block v-if="showHABot" class="block-narrow">
+      <habot @session-started="inChatSession = true" @session-end="inChatSession = false" />
     </f7-block>
 
     <f7-block v-if="!ready" class="text-align-center">
@@ -20,36 +17,34 @@
     </f7-block>
 
     <template v-else>
-      <component v-if="overviewPage"
-                 :is="overviewPage.component"
-                 v-show="!inChatSession"
-                 :context="overviewPageContext"
-                 :class="{ notready: !ready }"
-                 :f7router />
+      <oh-layout-page v-if="overviewPage" v-show="!inChatSession" :context="overviewPageContext" :class="{ notready: !ready }" :f7router />
       <div v-else-if="!inChatSession" class="empty-overview">
         <empty-state-placeholder icon="house" title="overview.title" text="overview.text" />
         <f7-row v-if="!userStore.isAdmin() || $f7dim.width < 1280" class="display-flex justify-content-center">
-          <f7-button large
-                     fill
-                     color="blue"
-                     external
-                     :href="`${runtimeStore.websiteUrl}/link/docs`"
-                     target="_blank"
-                     :text="$t('home.overview.button.documentation')" />
+          <f7-button
+            large
+            fill
+            color="blue"
+            external
+            :href="`${runtimeStore.websiteUrl}/link/docs`"
+            target="_blank"
+            :text="$t('home.overview.button.documentation')" />
           <span style="width: 8px" />
-          <f7-button large
-                     color="blue"
-                     external
-                     :href="`${runtimeStore.websiteUrl}/link/tutorial`"
-                     target="_blank"
-                     :text="$t('home.overview.button.tutorial')" />
+          <f7-button
+            large
+            color="blue"
+            external
+            :href="`${runtimeStore.websiteUrl}/link/tutorial`"
+            target="_blank"
+            :text="$t('home.overview.button.tutorial')" />
         </f7-row>
         <f7-row v-else class="display-flex justify-content-center">
-          <f7-button large
-                     fill
-                     color="blue"
-                     @click="f7.emit('selectDeveloperDock', { dock: 'help', helpTab: 'quick' })"
-                     :text="$t('home.overview.button.quickstart')" />
+          <f7-button
+            large
+            fill
+            color="blue"
+            @click="f7.emit('selectDeveloperDock', { dock: 'help', helpTab: 'quick' })"
+            :text="$t('home.overview.button.quickstart')" />
         </f7-row>
       </div>
     </template>
@@ -77,8 +72,8 @@ import { defineAsyncComponent } from 'vue'
 import { f7 } from 'framework7-vue'
 import { mapStores } from 'pinia'
 
-import OhLayoutPage from '@/components/widgets/layout/oh-layout-page.vue'
 import EmptyStatePlaceholder from '@/components/empty-state-placeholder.vue'
+import OhLayoutPage from '@/components/widgets/layout/oh-layout-page.vue'
 
 import { useStatesStore } from '@/js/stores/useStatesStore'
 import { useUserStore } from '@/js/stores/useUserStore'
@@ -94,25 +89,26 @@ export default {
   },
   components: {
     OhLayoutPage,
-    'empty-state-placeholder': EmptyStatePlaceholder,
+    EmptyStatePlaceholder,
     habot: defineAsyncComponent(() => import(/* webpackChunkName: "habot" */ '../../components/home/habot.vue'))
   },
-  setup () {
+  setup() {
     return { f7 }
   },
-  data () {
+  data() {
     return {
-      inChatSession: false
+      inChatSession: false,
+      vars: {}
     }
   },
   computed: {
-    ready () {
+    ready() {
       return useComponentsStore().ready && useStatesStore().ready
     },
-    showHABot () {
-      return (useRuntimeStore().apiEndpoint('habot') && this.allowChat && !useUIOptionsStore().hideChatInput)
+    showHABot() {
+      return useRuntimeStore().apiEndpoint('habot') && this.allowChat && !useUIOptionsStore().hideChatInput
     },
-    overviewPage () {
+    overviewPage() {
       const page = useComponentsStore().page('overview')
       if (page) {
         if (page.component === 'oh-layout-page') return page
@@ -123,18 +119,19 @@ export default {
       }
       return null
     },
-    overviewPageContext () {
+    overviewPageContext() {
       return {
         component: this.overviewPage,
         store: this.context.store,
-        vars: (this.overviewPage && this.overviewPage.config && this.overviewPage.config.defineVars) ? this.overviewPage.config.defineVars : {}
+        // eslint-disable-next-line vue/no-side-effects-in-computed-properties
+        vars: Object.assign(this.vars, this.overviewPage?.config?.defineVars ?? {})
       }
     },
-    pageStyle () {
+    pageStyle() {
       if (!this.overviewPage) return null
       return this.overviewPage.config.style
     },
-    ...mapStores(useUserStore,  useStatesStore, useComponentsStore, useUIOptionsStore, useRuntimeStore)
+    ...mapStores(useUserStore, useStatesStore, useComponentsStore, useUIOptionsStore, useRuntimeStore)
   }
 }
 </script>

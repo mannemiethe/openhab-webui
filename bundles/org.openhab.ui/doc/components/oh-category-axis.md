@@ -33,6 +33,16 @@ prev: /docs/ui/components/
     A name which will appear on tooltips and labels
   </PropDescription>
 </PropBlock>
+<PropBlock type="TEXT" name="style" label="Axis Style">
+  <PropDescription>
+    The style of the axis
+  </PropDescription>
+  <PropOptions>
+    <PropOption value="label" label="Label" />
+    <PropOption value="label+line" label="Label & Line" />
+    <PropOption value="label+line+tick" label="Label, Line & Tick" />
+  </PropOptions>
+</PropBlock>
 <PropBlock type="TEXT" name="categoryType" label="Categories" required="true">
   <PropDescription>
     Type of categories to display
@@ -43,6 +53,7 @@ prev: /docs/ui/components/
     <PropOption value="week" label="Days of week" />
     <PropOption value="month" label="Days of month" />
     <PropOption value="year" label="Months of year" />
+    <PropOption value="years" label="Multiple years" />
     <PropOption value="values" label="Values" />
   </PropOptions>
 </PropBlock>
@@ -55,11 +66,6 @@ prev: /docs/ui/components/
     <PropOption value="short" label="Short" />
     <PropOption value="min" label="Minimal" />
   </PropOptions>
-</PropBlock>
-<PropBlock type="BOOLEAN" name="startonSunday" label="Start Week on Sunday">
-  <PropDescription>
-    Check to start the week on Sundays instead of Mondays
-  </PropDescription>
 </PropBlock>
 <PropBlock type="TEXT" name="monthFormat" label="Month Format" required="true">
   <PropDescription>
@@ -107,11 +113,6 @@ prev: /docs/ui/components/
 ### Axis and Coordinate System Assignments
 <div class="props">
 <PropGroup name="componentRelations" label="Axis and Coordinate System Assignments">
-<PropBlock type="INTEGER" name="gridIndex" label="Grid Index" context="chartGrid">
-  <PropDescription>
-    The index of the grid for this axis
-  </PropDescription>
-</PropBlock>
 <PropBlock type="INTEGER" name="gridIndex" label="Grid Index" context="chartGrid">
   <PropDescription>
     The index of the grid for this axis

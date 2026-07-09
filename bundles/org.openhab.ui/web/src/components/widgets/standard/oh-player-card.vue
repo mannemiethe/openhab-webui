@@ -16,24 +16,31 @@
     </template>
     <template #footer>
       <f7-card-footer class="display-flex justify-content-center">
-        <oh-player-controls :context="childContext(context.component)" />
+        <oh-player-controls :context="cardChildContext(context.component)" />
       </f7-card-footer>
     </template>
   </oh-card>
 </template>
 
 <script>
-import mixin from '../widget-mixin'
+import { computed } from 'vue'
+import { useWidgetContext } from '@/components/widgets/useWidgetContext'
 import OhCard from '@/components/widgets/standard/oh-card.vue'
 import OhPlayerControls from '../system/oh-player-controls.vue'
 import { OhPlayerCardDefinition } from '@/assets/definitions/widgets/standard/cards'
 
 export default {
-  mixins: [mixin],
+  props: {
+    context: Object
+  },
   components: {
     OhCard,
     OhPlayerControls
   },
-  widget: OhPlayerCardDefinition
+  widget: OhPlayerCardDefinition,
+  setup(props) {
+    const { config, cardChildContext } = useWidgetContext(computed(() => props.context))
+    return { config, cardChildContext }
+  }
 }
 </script>

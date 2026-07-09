@@ -1,21 +1,18 @@
 <template>
   <f7-page @page:afterin="onPageAfterIn">
     <f7-navbar>
-      <oh-nav-content title="Link Channel to Item"
-                      back-link="Cancel"
-                      save-link="Link"
-                      @save="save()"
-                      :f7router />
+      <oh-nav-content title="Link Channel to Item" back-link="Cancel" save-link="Link" @save="save()" :f7router />
     </f7-navbar>
     <f7-block class="block-narrow">
       <f7-col v-if="channel">
         <f7-block-title>Channel</f7-block-title>
         <f7-list media-list>
-          <f7-list-item media-item
-                        class="channel-item"
-                        :title="channel.label || channelType.label"
-                        :footer="channel.description || channelType.description"
-                        :subtitle="channel.uid + ' (' + getItemType(channel) + ')'" />
+          <f7-list-item
+            media-item
+            class="channel-item"
+            :title="channel.label || channelType.label"
+            :footer="channel.description || channelType.description"
+            :subtitle="channel.uid + ' (' + getItemType(channel) + ')'" />
         </f7-list>
       </f7-col>
 
@@ -28,18 +25,20 @@
         <f7-col>
           <f7-block-title>Item</f7-block-title>
           <f7-list media-list>
-            <f7-list-item radio
-                          :checked="!createMode ? true : null"
-                          value="false"
-                          @change="createMode = false"
-                          title="Use an existing Item"
-                          name="item-creation-choice" />
-            <f7-list-item radio
-                          :checked="createMode ? true : null"
-                          value="true"
-                          @change="createMode = true"
-                          title="Create a new Item"
-                          name="item-creation-choice" />
+            <f7-list-item
+              radio
+              :checked="!createMode ? true : null"
+              value="false"
+              @change="createMode = false"
+              title="Use an existing Item"
+              name="item-creation-choice" />
+            <f7-list-item
+              radio
+              :checked="createMode ? true : null"
+              value="true"
+              @change="createMode = true"
+              title="Create a new Item"
+              name="item-creation-choice" />
           </f7-list>
         </f7-col>
 
@@ -47,27 +46,29 @@
         <f7-col v-if="!createMode">
           <f7-list>
             <f7-list-group>
-              <item-picker key="itemLink"
-                           label="Item to Link"
-                           name="item"
-                           :value="selectedItemName"
-                           :multiple="false"
-                           :items="items"
-                           :filterType="getCompatibleItemTypes()"
-                           :filterToggle="true"
-                           @input="(value) => selectedItemName = value" />
+              <item-picker
+                key="itemLink"
+                label="Item to Link"
+                name="item"
+                :value="selectedItemName"
+                :multiple="false"
+                :items="items"
+                :filterType="getCompatibleItemTypes()"
+                :showFilterToggle="true"
+                @input="(value) => (selectedItemName = value)" />
             </f7-list-group>
           </f7-list>
         </f7-col>
 
         <!-- Create new item -->
         <f7-col v-else>
-          <item-form ref="itemForm"
-                     :item="newItem"
-                     :items="items"
-                     :createMode="true"
-                     :unitHint="linkUnit()"
-                     :stateDescription="stateDescription()" />
+          <item-form
+            ref="itemForm"
+            :item="newItem"
+            :items="items"
+            :createMode="true"
+            :unitHint="linkUnit()"
+            :stateDescription="stateDescription()" />
         </f7-col>
       </template>
 
@@ -82,20 +83,18 @@
         <f7-block-title>Thing</f7-block-title>
         <f7-list inline-labels no-hairlines-md>
           <f7-list-group>
-            <thing-picker title="Thing"
-                          name="thing"
-                          :value="selectedThingId"
-                          @input="(e) => selectedThingId = e" />
+            <thing-picker title="Thing" name="thing" :value="selectedThingId" @input="(e) => (selectedThingId = e)" />
           </f7-list-group>
         </f7-list>
         <div v-if="selectedThing.UID && selectedThingType.UID">
           <f7-block-title>Channel</f7-block-title>
-          <channel-list :thing="selectedThing"
-                        :thingType="selectedThingType"
-                        :picker-mode="true"
-                        :item-type-filter="item.type"
-                        :channel-types="selectedThingChannelTypes"
-                        @selected="(channel) => loadProfileTypes(channel)" />
+          <channel-list
+            :thing="selectedThing"
+            :thingType="selectedThingType"
+            :picker-mode="true"
+            :item-type-filter="item.type"
+            :channel-types="selectedThingChannelTypes"
+            @selected="(channel) => loadProfileTypes(channel)" />
         </div>
       </f7-col>
 
@@ -109,47 +108,43 @@
         <f7-block-title>Profile</f7-block-title>
         <f7-block-footer class="padding-left padding-right">
           Profiles define how Channels and Items work together. Install transformation add-ons to get additional profiles.
-          <f7-link external
-                   color="blue"
-                   target="_blank"
-                   :href="`${runtimeStore.websiteUrl}/link/profiles`">
+          <f7-link external color="blue" target="_blank" :href="`${runtimeStore.websiteUrl}/link/profiles`">
             Learn more about profiles.
           </f7-link>
         </f7-block-footer>
         <f7-list class="profile-list">
-          <f7-list-item v-for="profileType in profileTypes"
-                        radio
-                        class="profile-item"
-                        :checked="(!currentProfileType && profileType.uid === 'system:default' && itemTypeCompatibleWithChannelType(currentItem, channel)) || (currentProfileType && profileType.uid === currentProfileType.uid) ? true : null"
-                        :disabled="!compatibleProfileTypes.includes(profileType) ? true : null"
-                        :class="{ 'profile-disabled': !compatibleProfileTypes.includes(profileType) }"
-                        @change="onProfileTypeChange(profileType.uid)"
-                        :key="profileType.uid"
-                        :title="profileType.label"
-                        name="profile-type" />
+          <f7-list-item
+            v-for="profileType in profileTypes"
+            radio
+            class="profile-item"
+            :checked="
+              (!currentProfileType && profileType.uid === 'system:default' && itemTypeCompatibleWithChannelType(currentItem, channel)) ||
+              (currentProfileType && profileType.uid === currentProfileType.uid)
+                ? true
+                : null
+            "
+            :disabled="!compatibleProfileTypes.includes(profileType) ? true : null"
+            :class="{ 'profile-disabled': !compatibleProfileTypes.includes(profileType) }"
+            @change="onProfileTypeChange(profileType.uid)"
+            :key="profileType.uid"
+            :title="profileType.label"
+            name="profile-type" />
         </f7-list>
       </f7-col>
       <f7-col v-if="profileTypeConfiguration != null">
         <f7-block-title>Profile Configuration</f7-block-title>
-        <config-sheet ref="profileConfiguration"
-                      :key="'profileTypeConfiguration-' + currentProfileType.uid"
-                      :parameter-groups="profileTypeConfiguration.parameterGroups"
-                      :parameters="profileTypeConfiguration.parameters"
-                      :configuration="configuration" />
+        <config-sheet
+          ref="profileConfiguration"
+          :key="'profileTypeConfiguration-' + currentProfileType.uid"
+          :parameter-groups="profileTypeConfiguration.parameterGroups"
+          :parameters="profileTypeConfiguration.parameters"
+          :configuration="configuration" />
       </f7-col>
     </f7-block>
 
     <div v-if="ready && profileTypes.length" class="if-aurora display-flex justify-content-center padding margin">
       <div class="flex-shrink-0">
-        <f7-button class="padding-left padding-right"
-                   style="width: 150px"
-                   color="blue"
-                   large
-                   raised
-                   fill
-                   @click="save">
-          Link
-        </f7-button>
+        <f7-button class="padding-left padding-right" style="width: 150px" color="blue" large raised fill @click="save"> Link </f7-button>
       </div>
     </div>
   </f7-page>
@@ -185,6 +180,7 @@ import LinkMixin from '@/pages/settings/things/link/link-mixin'
 import { useSemanticsStore } from '@/js/stores/useSemanticsStore'
 import { useRuntimeStore } from '@/js/stores/useRuntimeStore.js'
 import { mapStores } from 'pinia'
+import { showToast } from '@/js/dialog-promises'
 
 export default {
   mixins: [ItemMixin, uomMixin, LinkMixin],
@@ -196,10 +192,10 @@ export default {
     item: Object,
     f7router: Object
   },
-  setup () {
+  setup() {
     return { theme }
   },
-  data () {
+  data() {
     return {
       ready: true,
       createMode: false,
@@ -223,7 +219,7 @@ export default {
       types: Types
     }
   },
-  created () {
+  created() {
     if (!this.item) {
       this.$oh.api.get('/rest/items').then((items) => {
         this.items = items
@@ -231,16 +227,22 @@ export default {
     }
   },
   computed: {
-    currentItem () {
-      return this.item ? this.item : (this.createMode ? this.newItem : (this.items ? this.items.find((item) => item.name === this.selectedItemName) : null))
+    currentItem() {
+      return this.item
+        ? this.item
+        : this.createMode
+          ? this.newItem
+          : this.items
+            ? this.items.find((item) => item.name === this.selectedItemName)
+            : null
     },
-    compatibleProfileTypes () {
+    compatibleProfileTypes() {
       return this.profileTypes.filter((p) => this.isProfileTypeCompatible(this.channel, p, this.currentItem))
     },
     ...mapStores(useRuntimeStore)
   },
   methods: {
-    onPageAfterIn () {
+    onPageAfterIn() {
       if (!this.channel) return
       this.loadProfileTypes(this.channel)
       let newItemName = this.$oh.utils.normalizeLabel(this.thing.label)
@@ -250,34 +252,40 @@ export default {
         newItemName += '_'
       }
       newItemName += this.$oh.utils.normalizeLabel(this.channel.label || this.channelType.label)
-      const defaultTags = (this.channel.defaultTags.length > 0) ? this.channel.defaultTags : this.channelType.tags
+      const defaultTags = this.channel.defaultTags.length > 0 ? this.channel.defaultTags : this.channelType.tags
       this.newItem = {
         name: newItemName,
         label: this.thing.label + ' ' + (this.channel.label || this.channelType.label),
-        category: (this.channelType) ? this.channelType.category : '',
+        category: this.channelType ? this.channelType.category : '',
         groupNames: [],
         type: this.channel.itemType || 'Switch',
         unit: this.linkUnit(),
         tags: defaultTags.find((t) => useSemanticsStore().Points.indexOf(t) >= 0) ? defaultTags : [...defaultTags, 'Point']
       }
     },
-    linkUnit () {
-      const dimension = (this.channel && this.channel.itemType && this.channel.itemType.startsWith('Number:')) ? this.channel.itemType.split(':')[1] : ''
+    linkUnit() {
+      const dimension =
+        this.channel && this.channel.itemType && this.channel.itemType.startsWith('Number:') ? this.channel.itemType.split(':')[1] : ''
       return dimension ? this.getUnitHint(dimension, this.channelType) : ''
     },
-    stateDescription () {
+    stateDescription() {
       return this.channelType?.stateDescription?.pattern
     },
-    loadProfileTypes (channel) {
+    loadProfileTypes(channel) {
       this.ready = false
       this.selectedChannel = channel
       this.$oh.api.get('/rest/profile-types?channelTypeUID=' + channel.channelTypeUID).then((data) => {
         this.profileTypes = data
-        this.profileTypes.unshift(data.splice(data.findIndex((p) => p.uid === 'system:default'), 1)[0]) // move default to be first
+        this.profileTypes.unshift(
+          data.splice(
+            data.findIndex((p) => p.uid === 'system:default'),
+            1
+          )[0]
+        ) // move default to be first
         this.ready = true
       })
     },
-    onProfileTypeChange (profileTypeUid) {
+    onProfileTypeChange(profileTypeUid) {
       this.profileTypeConfiguration = null
       if (!profileTypeUid) {
         this.currentProfileType = null
@@ -285,30 +293,38 @@ export default {
       }
       this.currentProfileType = this.profileTypes.find((p) => p.uid === profileTypeUid)
       const getProfileConfigDescription = this.$oh.api.get('/rest/config-descriptions/profile:' + profileTypeUid)
-      getProfileConfigDescription.then((data) => {
-        this.profileTypeConfiguration = data
-      }).catch((err) => {
-        // just clear out the config sheet
-        console.warn(`No configuration for profile type ${profileTypeUid}: ` + err)
-        this.profileTypeConfiguration = null
-      })
+      getProfileConfigDescription
+        .then((data) => {
+          this.profileTypeConfiguration = data
+        })
+        .catch((err) => {
+          // just clear out the config sheet
+          console.warn(`No configuration for profile type ${profileTypeUid}: ` + err)
+          this.profileTypeConfiguration = null
+        })
     },
-    getItemType (channel) {
+    getItemType(channel) {
       if (channel && channel.kind === 'TRIGGER') return 'Trigger'
       if (!channel || !channel.itemType) return '?'
       return channel.itemType
     },
-    getCompatibleItemTypes () {
+    getCompatibleItemTypes() {
       let compatibleItemTypes = []
       if (this.channel.itemType) {
         compatibleItemTypes.push(this.channel.itemType)
-        if (this.channel.itemType.startsWith('Number')) { compatibleItemTypes.push('Switch') }
-        if (this.channel.itemType === 'Color') { compatibleItemTypes.push('Switch', 'Dimmer') }
-        if (this.channel.itemType === 'Dimmer') { compatibleItemTypes.push('Switch') }
+        if (this.channel.itemType.startsWith('Number')) {
+          compatibleItemTypes.push('Switch')
+        }
+        if (this.channel.itemType === 'Color') {
+          compatibleItemTypes.push('Switch', 'Dimmer')
+        }
+        if (this.channel.itemType === 'Dimmer') {
+          compatibleItemTypes.push('Switch')
+        }
       }
       return compatibleItemTypes
     },
-    save () {
+    save() {
       const link = {}
       if (this.channel) {
         link.channelUID = this.channel.uid
@@ -354,7 +370,10 @@ export default {
           return
         }
       }
-      if (!this.itemTypeCompatibleWithChannelType(this.currentItem, this.channel) && (!this.currentProfileType || !this.compatibleProfileTypes.includes(this.currentProfileType))) {
+      if (
+        !this.itemTypeCompatibleWithChannelType(this.currentItem, this.channel) &&
+        (!this.currentProfileType || !this.compatibleProfileTypes.includes(this.currentProfileType))
+      ) {
         f7.dialog.alert('Please configure a valid profile')
         return
       }
@@ -362,28 +381,20 @@ export default {
       if (this.createMode) {
         this.saveItem(this.newItem).then((data) => {
           this.$oh.api.put('/rest/links/' + link.itemName + '/' + encodeURIComponent(link.channelUID), link).then((data) => {
-            f7.toast.create({
-              text: 'Item and link created',
-              destroyOnClose: true,
-              closeTimeout: 2000
-            }).open()
+            showToast('Item and link created')
             this.f7router.back()
           })
         })
       } else {
         this.$oh.api.put('/rest/links/' + link.itemName + '/' + encodeURIComponent(link.channelUID), link).then((data) => {
-          f7.toast.create({
-            text: 'Link created',
-            destroyOnClose: true,
-            closeTimeout: 2000
-          }).open()
+          showToast('Link created')
           this.f7router.back()
         })
       }
     }
   },
   watch: {
-    selectedThingId () {
+    selectedThingId() {
       this.selectedThing = {}
       this.selectedThingType = {}
       this.profileTypes = []
@@ -394,17 +405,26 @@ export default {
       this.$oh.api.get('/rest/things/' + this.selectedThingId).then((data) => {
         this.selectedThing = data
 
-        let typePromises = [this.$oh.api.get('/rest/thing-types/' + this.selectedThing.thingTypeUID),
-          this.$oh.api.get('/rest/channel-types?prefixes=system,' + this.selectedThing.thingTypeUID.split(':')[0])]
+        let typePromises = [
+          this.$oh.api.get('/rest/thing-types/' + this.selectedThing.thingTypeUID),
+          this.$oh.api.get('/rest/channel-types?prefixes=system,' + this.selectedThing.thingTypeUID.split(':')[0])
+        ]
 
-        Promise.all(typePromises).then((data2) => {
-          this.selectedThingType = data2[0]
-          this.selectedThingChannelTypes = data2[1]
-          this.ready = true
-        })
+        Promise.all(typePromises)
+          .then((data2) => {
+            this.selectedThingType = data2[0]
+            this.selectedThingChannelTypes = data2[1]
+            this.ready = true
+          })
+          .catch((err) => {
+            console.error('Error loading thing type or channel types', err)
+            f7.dialog.alert('Error loading thing type or channel types: ' + err)
+            this.selectedThingId = ''
+            this.ready = true
+          })
       })
     },
-    currentItem () {
+    currentItem() {
       if (this.currentProfileType && !this.compatibleProfileTypes.find((p) => p.uid === this.currentProfileType.uid)) {
         this.currentProfileType = null
       }

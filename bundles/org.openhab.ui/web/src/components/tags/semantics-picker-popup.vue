@@ -1,35 +1,28 @@
 <template>
-  <f7-popup closeByBackdropClick
-            closeOnEscape
-            @popup:open="onOpen"
-            @popup:close="onClose">
+  <f7-popup closeByBackdropClick closeOnEscape @popup:open="onOpen" @popup:close="onClose">
     <f7-page>
       <f7-navbar :title="propertyMode ? 'Semantic Property' : 'Semantic Class'">
         <f7-nav-right>
-          <f7-link @click="onClose">
-            Close
-          </f7-link>
+          <f7-link @click="onClose"> Close </f7-link>
         </f7-nav-right>
       </f7-navbar>
       <f7-subnavbar :inner="false">
         <f7-searchbar
+          class="model-searchbar"
           search-container=".semantics-treeview"
           search-item=".treeview-item"
           search-in=".treeview-item-label"
           :disable-button="!theme.aurora"
           @input="showFiltered($event.target.value)" />
-        <div class="expand-button">
-          <f7-button v-if="!expanded"
-                     icon-size="24"
-                     tooltip="Expand"
-                     icon-f7="rectangle_expand_vertical"
-                     @click="toggleExpanded()" />
-          <f7-button v-else
-                     color="gray"
-                     icon-size="24"
-                     tooltip="Collapse"
-                     icon-f7="rectangle_compress_vertical"
-                     @click="toggleExpanded()" />
+        <div class="model-expand-button">
+          <f7-button v-if="!expanded" icon-size="24" tooltip="Expand" icon-f7="rectangle_expand_vertical" @click="toggleExpanded()" />
+          <f7-button
+            v-else
+            color="gray"
+            icon-size="24"
+            tooltip="Collapse"
+            icon-f7="rectangle_compress_vertical"
+            @click="toggleExpanded()" />
         </div>
       </f7-subnavbar>
       <f7-toolbar bottom class="toolbar-details">
@@ -52,31 +45,23 @@
         </div>
         <span />
       </f7-toolbar>
-      <semantics-treeview class="semantic-classes"
-                          :semanticTags="semanticTags"
-                          :expandedTags="expandedTags"
-                          @selected="tagSelected"
-                          :showNames="showNames"
-                          :showSynonyms="showSynonyms"
-                          :selectedTag="selectedTag"
-                          :selectedClass="selectedClass"
-                          :hideNone="hideNone"
-                          :picker="true"
-                          :propertyMode="!!propertyMode"
-                          :classMode="!!classMode"
-                          :limitToClass="!showAllClasses" />
+      <semantics-treeview
+        class="semantic-classes"
+        :semanticTags="semanticTags"
+        :expandedTags="expandedTags"
+        @selected="tagSelected"
+        :showNames="showNames"
+        :showSynonyms="showSynonyms"
+        :selectedTag="selectedTag"
+        :selectedClass="selectedClass"
+        :hideNone="hideNone"
+        :picker="true"
+        :propertyMode="!!propertyMode"
+        :classMode="!!classMode"
+        :limitToClass="!showAllClasses" />
     </f7-page>
   </f7-popup>
 </template>
-
-<style lang="stylus">
-.expand-button
-  margin-right 8px
-  text-overflow unset
-  align-self center
-  .icon
-    margin-bottom 2.75px !important
-</style>
 
 <script>
 import { f7, theme } from 'framework7-vue'
@@ -96,12 +81,12 @@ export default {
     semanticProperty: String
   },
   emits: ['close', 'changed'],
-  setup () {
+  setup() {
     return {
       theme
     }
   },
-  data () {
+  data() {
     return {
       expanded: false,
       expandedTags: [],
@@ -114,7 +99,7 @@ export default {
     }
   },
   computed: {
-    semanticTags () {
+    semanticTags() {
       return useSemanticsStore().Tags.map((t) => {
         const tag = {
           uid: t.uid,
@@ -127,8 +112,11 @@ export default {
         return tag
       })
     },
-    selectedClass () {
-      const selectedTag = this.semanticTags.find((t) => t.name === (this.semanticClass || this.semanticProperty)) || { uid: 'None', label: 'None' }
+    selectedClass() {
+      const selectedTag = this.semanticTags.find((t) => t.name === (this.semanticClass || this.semanticProperty)) || {
+        uid: 'None',
+        label: 'None'
+      }
       const tagName = selectedTag?.name
       if (useSemanticsStore().Locations.indexOf(tagName) >= 0) return 'Location'
       if (useSemanticsStore().Equipment.indexOf(tagName) >= 0) return 'Equipment'
@@ -137,26 +125,29 @@ export default {
     }
   },
   methods: {
-    onOpen () {
-      this.selectedTag = this.semanticTags.find((t) => t.name === (this.semanticClass || this.semanticProperty)) || { uid: 'None', label: 'None' }
+    onOpen() {
+      this.selectedTag = this.semanticTags.find((t) => t.name === (this.semanticClass || this.semanticProperty)) || {
+        uid: 'None',
+        label: 'None'
+      }
       // expand tree down to current selection
       this.expandToSelection()
     },
-    toggleExpanded () {
+    toggleExpanded() {
       this.expanded = !this.expanded
       this.semanticTags.forEach((t) => {
         this.expandedTags[t.uid] = this.expanded
       })
       this.expandToSelection()
     },
-    expandToSelection () {
+    expandToSelection() {
       this.selectedTag?.parent?.split('_').reduce((prev, p) => {
-        const parent = (prev ? (prev + '_') : '') + p
+        const parent = (prev ? prev + '_' : '') + p
         this.expandedTags[parent] = true
         return parent
       }, '')
     },
-    showFiltered (filter) {
+    showFiltered(filter) {
       if (filter) {
         if (!this.filtering) {
           this.filtering = true
@@ -172,7 +163,7 @@ export default {
         }
       }
     },
-    tagSelected (tag) {
+    tagSelected(tag) {
       const previousTag = this.selectedTag
       if (previousTag?.name) {
         const prevIndex = this.item.tags.indexOf(previousTag.name)
@@ -199,7 +190,7 @@ export default {
       this.selectedTag = tag
       this.$emit('changed')
     },
-    onClose () {
+    onClose() {
       f7.popup.close()
       this.$emit('close')
     }

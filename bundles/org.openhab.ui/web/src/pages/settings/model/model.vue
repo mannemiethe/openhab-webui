@@ -1,43 +1,33 @@
 <template>
-  <f7-page name="Model"
-           class="model-page"
-           @page:afterin="onPageAfterIn"
-           @page:beforeout="onPageBeforeOut">
+  <f7-page name="Model" class="model-page" @page:afterin="onPageAfterIn" @page:beforeout="onPageBeforeOut">
     <f7-navbar>
-      <oh-nav-content title="Semantic Model"
-                      back-link="Settings"
-                      back-link-url="/settings/"
-                      :f7router />
-      <f7-subnavbar :inner="false" v-show="initSearchbar">
+      <oh-nav-content title="Semantic Model" back-link="Settings" back-link-url="/settings/" :f7router />
+      <f7-subnavbar v-show="initSearchbar" :inner="false">
         <f7-searchbar
           v-if="initSearchbar"
           ref="searchbar"
+          class="model-searchbar"
           search-container=".semantic-tree"
           search-item=".treeview-item"
           search-in=".treeview-item-label"
           :placeholder="searchPlaceholder"
           :disable-button="!theme.aurora" />
-        <div class="expand-button">
-          <f7-button v-if="!expanded"
-                     icon-size="24"
-                     tooltip="Expand"
-                     icon-f7="rectangle_expand_vertical"
-                     @click="toggleExpanded()" />
-          <f7-button v-else
-                     color="gray"
-                     icon-size="24"
-                     tooltip="Collapse"
-                     icon-f7="rectangle_compress_vertical"
-                     @click="toggleExpanded()" />
+        <div class="model-expand-button">
+          <f7-button v-if="!expanded" icon-size="24" tooltip="Expand" icon-f7="rectangle_expand_vertical" @click="toggleExpanded()" />
+          <f7-button
+            v-else
+            color="gray"
+            icon-size="24"
+            tooltip="Collapse"
+            icon-f7="rectangle_compress_vertical"
+            @click="toggleExpanded()" />
         </div>
       </f7-subnavbar>
     </f7-navbar>
 
     <!-- Toolbar -->
     <f7-toolbar v-if="$f7dim.width >= 500" bottom class="toolbar-details">
-      <f7-link class="left" :class="{ disabled: selectedItem == null }" @click="selectedItem = null">
-        Clear
-      </f7-link>
+      <f7-link class="left" :class="{ disabled: selectedItem == null }" @click="selectedItem = null"> Clear </f7-link>
       <div class="padding-right text-align-right">
         <label class="advanced-label">
           <f7-checkbox v-model:checked="includeNonSemantic" @change="changeNonSemantic" />
@@ -52,15 +42,10 @@
           Show tags
         </label>
       </div>
-      <f7-link class="right details-link padding-right"
-               ref="detailsLink"
-               @click="detailsOpened = true"
-               icon-f7="chevron_up" />
+      <f7-link class="right details-link padding-right" ref="detailsLink" @click="detailsOpened = true" icon-f7="chevron_up" />
     </f7-toolbar>
     <f7-toolbar v-else bottom class="toolbar-details">
-      <f7-link :class="{ disabled: selectedItem == null }" @click="selectedItem = null">
-        Clear
-      </f7-link>
+      <f7-link :class="{ disabled: selectedItem == null }" @click="selectedItem = null"> Clear </f7-link>
       <div class="padding-left padding-right text-align-center" style="font-size: 12px">
         <div>
           <label class="advanced-label">
@@ -79,10 +64,7 @@
           </label>
         </div>
       </div>
-      <f7-link class="right details-link padding-right"
-               ref="detailsLink"
-               @click="detailsOpened = true"
-               icon-f7="chevron_up" />
+      <f7-link class="right details-link padding-right" ref="detailsLink" @click="detailsOpened = true" icon-f7="chevron_up" />
     </f7-toolbar>
 
     <f7-block v-if="!ready" class="text-align-center">
@@ -95,68 +77,61 @@
           <f7-block v-if="empty">
             <empty-state-placeholder icon="list_bullet_indent" title="model.title" text="model.text" />
             <f7-row class="display-flex justify-content-center">
-              <f7-button color="blue"
-                         large
-                         raised
-                         fill
-                         @click="addFromLocationTemplate()">
-                Add Locations from Template
-              </f7-button>
+              <f7-button color="blue" large raised fill @click="addFromLocationTemplate()"> Add Locations from Template </f7-button>
             </f7-row>
           </f7-block>
 
-          <f7-block v-show="!empty"
-                    strong
-                    class="semantic-tree"
-                    no-gap
-                    @click="clearSelection">
-            <model-treeview :rootNodes="[rootLocations, rootEquipment, rootPoints, rootGroups, rootItems].flat()"
-                            :items="items"
-                            :includeItemName="includeItemName"
-                            :includeItemTags="includeItemTags"
-                            :canDragDrop="true"
-                            @selected="selectItem"
-                            @clear-selected="clearSelection"
-                            :selected="selectedItem"
-                            @reload="load"
-                            @click.stop />
+          <f7-block v-show="!empty" strong class="semantic-tree" no-gap @click="clearSelection">
+            <model-treeview
+              :rootNodes="[rootLocations, rootEquipment, rootPoints, rootGroups, rootItems].flat()"
+              :items="items"
+              :includeItemName="includeItemName"
+              :includeItemTags="includeItemTags"
+              :canDragDrop="true"
+              @selected="selectItem"
+              @clear-selected="clearSelection"
+              :selected="selectedItem"
+              @reload="load"
+              @opened="expandChild"
+              @click.stop />
           </f7-block>
         </f7-col>
         <f7-col width="100" medium="50" class="details-pane">
           <f7-block v-if="selectedItem" no-gap>
-            <model-details-pane :key="itemDetailsKey"
-                                :model="selectedItem"
-                                :links="links"
-                                :items="items"
-                                :context="context"
-                                :f7router
-                                @item-updated="update"
-                                @item-created="update"
-                                @item-removed="selectItem(null)"
-                                @cancel-create="selectItem(null)" />
+            <model-details-pane
+              :key="itemDetailsKey"
+              :model="selectedItem"
+              :links="links"
+              :items="items"
+              :context="context"
+              :f7router
+              @item-updated="update"
+              @item-created="update"
+              @item-removed="selectItem(null)"
+              @cancel-create="selectItem(null)" />
           </f7-block>
           <f7-block v-else>
-            <div class="padding text-align-center">
-              Nothing selected
-            </div>
+            <div class="padding text-align-center">Nothing selected</div>
           </f7-block>
-          <f7-block v-if="!selectedItem || (selectedItem.item.created !== false && selectedItem.item.type === 'Group' && selectedItem.class.indexOf('Point_') < 0)">
+          <f7-block
+            v-if="
+              !selectedItem ||
+              (selectedItem.item.created !== false && selectedItem.item.type === 'Group' && selectedItem.class.indexOf('Point_') < 0)
+            ">
             <div><f7-block-title>Add to Model</f7-block-title></div>
             <f7-card>
               <f7-card-content>
                 <f7-list>
-                  <f7-list-button v-show="!selectedItem || selectedItem.class.indexOf('Location') === 0"
-                                  color="blue"
-                                  title="Add Location"
-                                  @click="addSemanticItem('Location')" />
+                  <f7-list-button
+                    v-show="!selectedItem || selectedItem.class.indexOf('Location') === 0"
+                    color="blue"
+                    title="Add Location"
+                    @click="addSemanticItem('Location')" />
                   <f7-list-button color="blue" title="Create Equipment from Thing" @click="addFromThing(true)" />
                   <f7-list-button color="blue" title="Create Points from Thing" @click="addFromThing(false)" />
                   <f7-list-button color="blue" title="Add Equipment" @click="addSemanticItem('Equipment')" />
                   <f7-list-button color="blue" title="Add Point" @click="addSemanticItem('Point')" />
-                  <f7-list-button color="blue"
-                                  v-if="includeNonSemantic"
-                                  title="Add Item"
-                                  @click="addNonSemanticItem(false)" />
+                  <f7-list-button v-if="includeNonSemantic" color="blue" title="Add Item" @click="addNonSemanticItem(false)" />
                 </f7-list>
               </f7-card-content>
             </f7-card>
@@ -166,17 +141,18 @@
     </f7-block>
 
     <template #fixed>
-      <f7-fab v-if="!selectedItem || (selectedItem.item.created !== false && selectedItem.item.type === 'Group' && selectedItem.class.indexOf('Point_') < 0)"
-              class="add-to-model-fab"
-              position="right-bottom"
-              color="blue">
+      <f7-fab
+        v-if="
+          !selectedItem ||
+          (selectedItem.item.created !== false && selectedItem.item.type === 'Group' && selectedItem.class.indexOf('Point_') < 0)
+        "
+        class="add-to-model-fab"
+        position="right-bottom"
+        color="blue">
         <f7-icon ios="f7:plus" md="material:add" aurora="f7:plus" />
         <f7-icon ios="f7:multiply" md="material:close" aurora="f7:multiply" />
         <f7-fab-buttons position="top">
-          <f7-fab-button v-if="includeNonSemantic"
-                         fab-close
-                         label="Add Item"
-                         @click="addNonSemanticItem(false)">
+          <f7-fab-button v-if="includeNonSemantic" fab-close label="Add Item" @click="addNonSemanticItem(false)">
             <f7-icon ios="material:label_outline" md="material:label_outline" aurora="material:label_outline" />
           </f7-fab-button>
           <f7-fab-button fab-close label="Add Point" @click="addSemanticItem('Point')">
@@ -191,32 +167,30 @@
           <f7-fab-button fab-close label="Create Equipment from Thing" @click="addFromThing(true)">
             <f7-icon ios="f7:layers_fill" md="material:layers" aurora="f7:layers_fill" />
           </f7-fab-button>
-          <f7-fab-button v-show="!selectedItem || selectedItem.class.indexOf('Location') === 0"
-                         fab-close
-                         label="Add Location"
-                         @click="addSemanticItem('Location')">
+          <f7-fab-button
+            v-show="!selectedItem || selectedItem.class.indexOf('Location') === 0"
+            fab-close
+            label="Add Location"
+            @click="addSemanticItem('Location')">
             <f7-icon ios="f7:placemark_fill" md="material:place" aurora="f7:placemark_fill" />
           </f7-fab-button>
         </f7-fab-buttons>
       </f7-fab>
     </template>
 
-    <f7-sheet class="model-details-sheet"
-              :backdrop="false"
-              :close-on-escape="true"
-              :opened="detailsOpened"
-              @sheet:closed="detailsOpened = false">
+    <f7-sheet
+      class="model-details-sheet"
+      :backdrop="false"
+      :close-on-escape="true"
+      :opened="detailsOpened"
+      @sheet:closed="detailsOpened = false">
       <f7-page>
         <f7-toolbar tabbar bottom>
           <f7-link class="padding-left padding-right" :tab-link-active="detailsTab === 'state'" @click="detailsTab = 'state'">
             State
           </f7-link>
-          <f7-link class="padding-left padding-right" :tab-link-active="detailsTab === 'item'" @click="detailsTab = 'item'">
-            Item
-          </f7-link>
-          <f7-link class="padding-left padding-right" :tab-link-active="detailsTab === 'meta'" @click="detailsTab = 'meta'">
-            Meta
-          </f7-link>
+          <f7-link class="padding-left padding-right" :tab-link-active="detailsTab === 'item'" @click="detailsTab = 'item'"> Item </f7-link>
+          <f7-link class="padding-left padding-right" :tab-link-active="detailsTab === 'meta'" @click="detailsTab = 'meta'"> Meta </f7-link>
           <f7-link class="padding-left padding-right" :tab-link-active="detailsTab === 'links'" @click="detailsTab = 'links'">
             Links
           </f7-link>
@@ -226,27 +200,23 @@
             </f7-link>
           </div>
         </f7-toolbar>
-        <f7-block style="margin-bottom: 6rem" v-if="selectedItem">
+        <f7-block v-if="selectedItem" style="margin-bottom: 6rem">
           <item-state-preview v-if="detailsTab === 'state' && !newItem" :item="selectedItem.item" :context="context" />
-          <item-details v-if="detailsTab === 'item'"
-                        :model="selectedItem"
-                        :links="links"
-                        :items="items"
-                        :context="context"
-                        @item-updated="update"
-                        @item-created="update"
-                        @item-removed="selectItem(null)"
-                        @cancel-create="selectItem(null)" />
+          <item-details
+            v-if="detailsTab === 'item'"
+            :model="selectedItem"
+            :links="links"
+            :items="items"
+            :context="context"
+            @item-updated="update"
+            @item-created="update"
+            @item-removed="selectItem(null)"
+            @cancel-create="selectItem(null)" />
           <metadata-menu v-if="detailsTab === 'meta'" :item="selectedItem.item" :f7router />
-          <link-details v-if="detailsTab === 'links'"
-                        :item="selectedItem.item"
-                        :links="links"
-                        :f7router />
+          <link-details v-if="detailsTab === 'links'" :item="selectedItem.item" :links="links" :f7router />
         </f7-block>
         <f7-block v-else>
-          <div class="padding text-align-center">
-            Nothing selected
-          </div>
+          <div class="padding text-align-center">Nothing selected</div>
         </f7-block>
       </f7-page>
     </f7-sheet>
@@ -255,8 +225,9 @@
 
 <style lang="stylus">
 .semantic-tree-wrapper
-  user-select: none
-  padding 0
+  user-select none
+  margin-left var(--f7-safe-area-left)
+  margin-right var(--f7-safe-area-right)
   .row
     height 100%
     .col-100
@@ -285,6 +256,8 @@
     height calc(100% - var(--f7-toolbar-height))
     .row
       .details-pane
+        --f7-safe-area-left 0px
+        --f7-safe-area-right 0px
         padding-top 0
         .block
           margin-top 0
@@ -315,13 +288,8 @@
 .model-page
   .subnavbar
     background-color var(--f7-searchbar-bg-color, var(--f7-bars-bg-color))
-  .expand-button
-    height unset
-    margin-right 8px
-    text-overflow unset
-    align-self center
-    .icon
-      margin-bottom 2.75px !important
+    .button, .link
+      color var(--f7-toolbar-link-color, var(--f7-bars-link-color, var(--f7-theme-color)))
 </style>
 
 <script>
@@ -342,6 +310,7 @@ import LinkDetails from '@/components/model/link-details.vue'
 import ModelMixin from '@/pages/settings/model/model-mixin'
 import EmptyStatePlaceholder from '@/components/empty-state-placeholder.vue'
 
+import { useUIOptionsStore } from '@/js/stores/useUIOptionsStore'
 import { useRuntimeStore } from '@/js/stores/useRuntimeStore'
 import { useStatesStore } from '@/js/stores/useStatesStore'
 import { useLastSearchQueryStore } from '@/js/stores/useLastSearchQueryStore'
@@ -360,12 +329,13 @@ export default {
     MetadataMenu,
     LinkDetails
   },
-  setup () {
+  setup() {
     return {
-      f7, theme
+      f7,
+      theme
     }
   },
-  data () {
+  data() {
     return {
       newItem: null,
       newItemParent: null,
@@ -377,45 +347,50 @@ export default {
     }
   },
   computed: {
-    empty () {
+    empty() {
       let emptySemantic = !this.rootLocations.length && !this.rootEquipment.length && !this.rootPoints.length
-      return (this.includeNonSemantic) ? emptySemantic && !this.rootGroups.length && !this.rootItems.length : emptySemantic
+      return this.includeNonSemantic ? emptySemantic && !this.rootGroups.length && !this.rootItems.length : emptySemantic
     },
-    context () {
+    context() {
       return {
         store: useStatesStore().trackedItems
       }
     },
-    searchPlaceholder () {
+    searchPlaceholder() {
       return window.innerWidth >= 1280 ? 'Search (for advanced search, use the developer sidebar (Shift+Alt+D))' : 'Search'
     },
     ...mapWritableState(useRuntimeStore, {
-      includeItemName: 'modelPicker.includeItemName',
-      includeItemTags: 'modelPicker.includeItemTags',
-      includeNonSemantic: 'modelPicker.includeNonSemantic',
-      expanded: 'modelPicker.expanded'
+      expanded: 'modelExpanded',
+      selectedItem: 'modelSelectedItem',
+      expandedTreeviewItems: 'modelExpandedTreeviewItems'
+    }),
+    ...mapWritableState(useUIOptionsStore, {
+      includeItemName: 'modelPickerShowItemName',
+      includeItemTags: 'modelPickerShowItemTags',
+      includeNonSemantic: 'modelPickerShowNonSemantic'
     })
   },
   methods: {
-    onPageAfterIn () {
+    onPageAfterIn() {
       useStatesStore().startTrackingStates()
       if (this.selectedItem) {
         this.update()
       } else {
+        this.expandedTreeviewItems = []
         this.load()
       }
     },
-    onPageBeforeOut () {
+    onPageBeforeOut() {
       this.detailsOpened = false
       useStatesStore().stopTrackingStates()
       this.stopEventSource()
       useLastSearchQueryStore().lastModelSearchQuery = this.$refs.searchbar?.$el.f7Searchbar.query
     },
-    modelItem (item) {
+    modelItem(item) {
       const modelItem = {
         item,
         opened: false,
-        class: (item.metadata && item.metadata.semantics) ? item.metadata.semantics.value : '',
+        class: item.metadata && item.metadata.semantics ? item.metadata.semantics.value : '',
         children: {
           locations: [],
           equipment: [],
@@ -436,7 +411,7 @@ export default {
 
       return modelItem
     },
-    load () {
+    load() {
       if (this.initSearchbar) useLastSearchQueryStore().lastModelSearchQuery = this.$refs.searchbar?.$el.f7Searchbar.query
       this.initSearchbar = false
 
@@ -452,30 +427,34 @@ export default {
         if (!this.eventSource) this.startEventSource()
       })
     },
-    update () {
+    update() {
       this.previousSelection = this.selectedItem
       this.newItem = null
       this.load()
       // this.newItemParent = null
     },
-    startEventSource () {
-      this.eventSource = this.$oh.sse.connect('/rest/events?topics=openhab/items/*/added,openhab/items/*/updated,openhab/items/*/removed', null, (event) => {
-        const topicParts = event.topic.split('/')
-        switch (topicParts[3]) {
-          case 'added':
-          case 'removed':
-          case 'updated':
-            // this.ready = false
-            this.update()
-            break
+    startEventSource() {
+      this.eventSource = this.$oh.sse.connect(
+        '/rest/events?topics=openhab/items/*/added,openhab/items/*/updated,openhab/items/*/removed',
+        null,
+        (event) => {
+          const topicParts = event.topic.split('/')
+          switch (topicParts[3]) {
+            case 'added':
+            case 'removed':
+            case 'updated':
+              // this.ready = false
+              this.update()
+              break
+          }
         }
-      })
+      )
     },
-    stopEventSource () {
+    stopEventSource() {
       this.$oh.sse.close(this.eventSource)
       this.eventSource = null
     },
-    selectItem (item) {
+    selectItem(item) {
       // Allow deselecting by clicking a second time
       if (this.selectedItem === item) {
         this.clearSelection()
@@ -488,30 +467,32 @@ export default {
         this.load()
       }
       const detailsLink = this.$refs.detailsLink
-      const visibility = window.getComputedStyle(detailsLink.$el).visibility
-      if (!visibility || visibility !== 'hidden') {
-        this.detailsOpened = true
+      if (detailsLink) {
+        const visibility = window.getComputedStyle(detailsLink.$el).visibility
+        if (!visibility || visibility !== 'hidden') {
+          this.detailsOpened = true
+        }
       }
     },
-    clearSelection (ev) {
+    clearSelection(ev) {
       if (!ev || (ev.target && ev.currentTarget && ev.target === ev.currentTarget)) {
         this.selectedItem = null
         this.previousSelection = null
         this.detailsOpened = false
       }
     },
-    changeNonSemantic () {
+    changeNonSemantic() {
       this.rootGroups = []
       this.rootItems = []
       this.load()
     },
-    toggleExpanded () {
+    toggleExpanded() {
       this.expanded = !this.expanded
       this.applyExpandedOption()
     },
-    addSemanticItem (semanticType) {
+    addSemanticItem(semanticType) {
       this.newItem = {
-        type: (semanticType === 'Point') ? 'Switch' : 'Group',
+        type: semanticType === 'Point' ? 'Switch' : 'Group',
         name: '',
         label: '',
         category: '',
@@ -527,8 +508,7 @@ export default {
         this.newItem.groupNames = [this.selectedItem.item.name]
         if (this.selectedItem.item.metadata && this.selectedItem.item.metadata.semantics) {
           const semantics = this.selectedItem.item.metadata.semantics
-          if (semantics.value.indexOf('Location') === 0 &&
-              semanticType.indexOf('Location') < 0) {
+          if (semantics.value.indexOf('Location') === 0 && semanticType.indexOf('Location') < 0) {
             this.newItem.metadata.semantics.config = {
               hasLocation: this.selectedItem.item.name
             }
@@ -548,9 +528,9 @@ export default {
       this.detailsTab = 'item'
       this.load()
     },
-    addNonSemanticItem (group) {
+    addNonSemanticItem(group) {
       this.newItem = {
-        type: (group) ? 'Group' : 'String',
+        type: group ? 'Group' : 'String',
         name: '',
         label: '',
         category: '',
@@ -565,40 +545,43 @@ export default {
       this.detailsTab = 'item'
       this.load()
     },
-    addFromThing (createEquipment) {
-      this.f7router.navigate({
-        url: 'add-thing',
-        route: {
-          component: AddFromThing,
-          path: 'add-thing',
-          props: {
-          },
-          on: {
-            pageAfterOut (event, page) {
+    addFromThing(createEquipment) {
+      this.f7router.navigate(
+        {
+          url: 'add-thing',
+          route: {
+            component: AddFromThing,
+            path: 'add-thing',
+            props: {},
+            on: {
+              pageAfterOut(event, page) {}
             }
           }
-        }
-      }, {
-        props: {
-          parent: this.selectedItem,
-          createEquipment
-        }
-      })
-    },
-    addFromLocationTemplate () {
-      this.f7router.navigate({
-        url: 'add-template',
-        route: {
-          component: AddFromTemplate,
-          path: 'add-template',
+        },
+        {
           props: {
+            parent: this.selectedItem,
+            createEquipment
           }
         }
-      }, {
-        props: {
-          itemList: this.items
+      )
+    },
+    addFromLocationTemplate() {
+      this.f7router.navigate(
+        {
+          url: 'add-template',
+          route: {
+            component: AddFromTemplate,
+            path: 'add-template',
+            props: {}
+          }
+        },
+        {
+          props: {
+            itemList: this.items
+          }
         }
-      })
+      )
     }
   }
 }

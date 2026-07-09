@@ -1,95 +1,91 @@
 <template>
-  <f7-page @page:afterin="onPageAfterIn" @page:beforeout="onPageBeforeOut">
+  <f7-page ref="blocks-edit-page" @page:afterin="onPageAfterIn" @page:beforeout="onPageBeforeOut">
     <f7-navbar>
-      <oh-nav-content :title="(createMode ? 'Create Block Library' : 'Block Library: ' + blocks.uid) + dirtyIndicator"
-                      :save-link="`Save${$device.desktop ? ' (Ctrl-S)' : ''}`"
-                      @save="save()"
-                      :f7router />
+      <oh-nav-content
+        :title="(createMode ? 'Create Block Library' : 'Block Library: ' + blocks.uid) + dirtyIndicator"
+        :editable="isEditable"
+        :save-link="`Save${$device.desktop ? ' (Ctrl-S)' : ''}`"
+        @save="save()"
+        :f7router />
     </f7-navbar>
     <f7-toolbar position="bottom">
-      <f7-link @click="previewOpened = true">
-        Preview<span v-if="$device.desktop">&nbsp;(Ctrl-P)</span>
-      </f7-link>
-      <f7-link icon-f7="uiwindow_split_2x1" @click="split = (split === 'horizontal') ? 'vertical' : 'horizontal'; blockKey = f7.utils.id();" />
-      <f7-link @click="refreshBlocks">
-        Refresh<span v-if="$device.desktop">&nbsp;(Ctrl-R)</span>
-      </f7-link>
+      <f7-link @click="previewOpened = true"> Preview<span v-if="$device.desktop">&nbsp;(Ctrl-P)</span> </f7-link>
+      <!-- prettier-ignore  -->
+      <f7-link
+        icon-f7="uiwindow_split_2x1"
+        @click="split = split === 'horizontal' ? 'vertical' : 'horizontal'; blockKey = f7.utils.id()" />
+      <f7-link @click="refreshBlocks"> Refresh<span v-if="$device.desktop">&nbsp;(Ctrl-R)</span> </f7-link>
     </f7-toolbar>
-    <f7-block :key="blockKey + '-h'" v-if="split === 'horizontal'" class="blocks-editor horizontal">
+    <f7-block
+      v-if="split === 'horizontal'"
+      :key="blockKey + '-h'"
+      class="blocks-editor horizontal"
+      :class="{ 'not-editable': !isEditable }">
+      <not-editable-notice v-if="ready && !isEditable" subject="block library" />
       <f7-row resizable>
         <f7-col style="min-width: 20px" class="blocks-code">
-          <editor class="blocks-component-editor"
-                  mode="application/vnd.openhab.uicomponent+yaml;type=blocks"
-                  :value="blocksDefinition"
-                  @input="onEditorInput" />
+          <editor
+            class="blocks-component-editor"
+            mode="application/vnd.openhab.uicomponent+yaml;type=blocks"
+            :value="blocksDefinition"
+            :readOnly="!isEditable"
+            @input="onEditorInput"
+            @save="save()" />
         </f7-col>
       </f7-row>
       <f7-row v-if="ready" resizable>
         <f7-col style="min-width: 20px" class="block-preview-pane margin-horizontal margin-bottom">
-          <block-preview :blocks-definition="blocks" :key="previewKey" />
+          <block-preview :blocks-definition="blocks" :read-only="!isEditable" :key="previewKey" />
           <!-- <generic-widget-component :key="widgetKey" :context="context" /> -->
         </f7-col>
       </f7-row>
     </f7-block>
-    <f7-block v-else :key="blockKey + 'b'" class="blocks-editor vertical">
+    <f7-block v-else :key="blockKey + 'b'" class="blocks-editor vertical" :class="{ 'not-editable': !isEditable }">
+      <not-editable-notice v-if="ready && !isEditable" subject="block library" />
       <f7-row resizable>
         <f7-col resizable style="min-width: 20px" class="blocks-code">
-          <editor class="blocks-component-editor"
-                  mode="application/vnd.openhab.uicomponent+yaml;type=blocks"
-                  :value="blocksDefinition"
-                  @input="onEditorInput" />
+          <editor
+            class="blocks-component-editor"
+            mode="application/vnd.openhab.uicomponent+yaml;type=blocks"
+            :value="blocksDefinition"
+            :readOnly="!isEditable"
+            @input="onEditorInput"
+            @save="save()" />
         </f7-col>
-        <f7-col v-if="ready"
-                resizable
-                style="min-width: 20px"
-                class="block-preview-pane padding-right margin-bottom">
-          <block-preview :blocks-definition="blocks" :key="previewKey" />
+        <f7-col v-if="ready" resizable style="min-width: 20px" class="block-preview-pane padding-right margin-bottom">
+          <block-preview :blocks-definition="blocks" :read-only="!isEditable" :key="previewKey" />
           <!-- <generic-widget-component :key="widgetKey" :context="context" /> -->
         </f7-col>
       </f7-row>
     </f7-block>
 
-    <f7-popup ref="previewPopup"
-              close-on-escape
-              class="block-editor-preview-popup"
-              :opened="previewOpened"
-              @popup:closed="previewClosed">
+    <f7-popup ref="previewPopup" close-on-escape class="block-editor-preview-popup" :opened="previewOpened" @popup:closed="previewClosed">
       <f7-page v-if="previewOpened">
         <f7-navbar>
           <f7-nav-left>
-            <f7-link icon-ios="f7:arrow_left"
-                     icon-md="material:arrow_back"
-                     icon-aurora="f7:arrow_left"
-                     popup-close />
+            <f7-link icon-ios="f7:arrow_left" icon-md="material:arrow_back" icon-aurora="f7:arrow_left" popup-close />
           </f7-nav-left>
           <f7-nav-title>Preview</f7-nav-title>
           <f7-nav-right>
-            <f7-link popup-close>
-              Done
-            </f7-link>
+            <f7-link popup-close> Done </f7-link>
           </f7-nav-right>
         </f7-navbar>
-        <blockly-editor v-if="previewMode === 'blockly'"
-                        ref="blocklyPreviewEditor"
-                        :blocks="previewBlockSource"
-                        :library-definitions="[blocks]"
-                        @change="dirty = true" />
-        <editor v-else-if="previewMode === 'code'"
-                class="blocks-preview-code"
-                mode="application/javascript"
-                :value="previewGeneratedCode"
-                :read-only="true" />
+        <blockly-editor
+          v-if="previewMode === 'blockly'"
+          ref="blocklyPreviewEditor"
+          :blocks="previewBlockSource"
+          :library-definitions="[blocks]" />
+        <editor
+          v-else-if="previewMode === 'code'"
+          class="blocks-preview-code"
+          mode="application/javascript"
+          :value="previewGeneratedCode"
+          :read-only="true" />
         <template #fixed>
-          <f7-fab v-show="previewMode === 'blockly'"
-                  position="right-bottom"
-                  color="blue"
-                  @click="togglePreviewMode('code')">
+          <f7-fab v-show="previewMode === 'blockly'" position="right-bottom" color="blue" @click="togglePreviewMode('code')">
             <f7-icon f7="doc_text" />
           </f7-fab>
-          <f7-fab v-show="previewMode === 'code'"
-                  position="right-bottom"
-                  color="blue"
-                  @click="togglePreviewMode('blockly')">
+          <f7-fab v-show="previewMode === 'code'" position="right-bottom" color="blue" @click="togglePreviewMode('blockly')">
             <f7-icon f7="ticket" />
           </f7-fab>
         </template>
@@ -106,48 +102,48 @@
   z-index auto !important
   top 0
   height calc(100%)
+  &.not-editable
+    height calc(100% - 2 * var(--f7-block-margin-vertical))
   .code-editor-fit
-    height calc(100% - var(--f7-grid-gap))
+    height 100%
   .row
     height 100%
     .block-preview-pane
-      height 100%
+      height calc(100% - var(--f7-grid-gap))
       overflow auto
     .blocks-code
       height 100%
-  .v-codemirror
-    top 0
-    height 100%
+      position relative
   &.vertical
     .block-preview-pane
       z-index auto !important
   &.horizontal
     .row
       height 50%
-    .v-codemirror
+    .code-editor-fit
       height calc(100% - var(--f7-grid-gap))
 .blocklyDropDownDiv
   z-index 11001 !important
 </style>
 
 <script>
-import { f7, theme } from 'framework7-vue'
+import { f7 } from 'framework7-vue'
 import { nextTick, defineAsyncComponent } from 'vue'
-
-import YAML from 'yaml'
 
 import BlocklyEditor from '@/components/config/controls/blockly-editor.vue'
 import BlockPreview from './block-preview.vue'
-import DirtyMixin from '@/pages/settings/dirty-mixin'
-
-const toStringOptions = { toStringDefaults: { lineWidth: 0 } }
+import NotEditableNotice from '@/components/util/not-editable-notice.vue'
+import { showToast } from '@/js/dialog-promises'
+import { useDirty } from '@/pages/useDirty'
+import { toFileYAMLSyntax, fromFileYAMLSyntax } from '@/pages/yaml-file-format'
+import { useThrottleFn } from '@vueuse/core'
 
 export default {
-  mixins: [DirtyMixin],
   components: {
     editor: defineAsyncComponent(() => import(/* webpackChunkName: "script-editor" */ '@/components/config/controls/script-editor.vue')),
     BlocklyEditor, // 'blockly-editor': () => import(/* webpackChunkName: "blockly-editor" */ '@/components/config/controls/blockly-editor.vue'),
-    BlockPreview // 'block-preview': () => import(/* webpackChunkName: "blockly-editor" */ './block-preview.vue')
+    BlockPreview, // 'block-preview': () => import(/* webpackChunkName: "blockly-editor" */ './block-preview.vue')
+    NotEditableNotice
   },
   props: {
     uid: String,
@@ -155,12 +151,14 @@ export default {
     f7router: Object,
     f7route: Object
   },
-  setup () {
-    return { theme, f7 }
+  setup() {
+    const { dirty, dirtyIndicator } = useDirty('blocks-edit-page')
+    return { f7, dirty, dirtyIndicator }
   },
-  data () {
+  data() {
     return {
       blocksDefinition: null,
+      blocksEditable: true,
       items: [],
       ready: false,
       split: 'vertical',
@@ -176,48 +174,57 @@ export default {
     }
   },
   computed: {
-    blocks () {
+    blocks() {
       try {
         if (!this.blocksDefinition) return {}
-        return YAML.parse(this.blocksDefinition, { prettyErrors: true, toStringOptions })
+        const uid = this.createMode ? null : this.uid
+        return fromFileYAMLSyntax('blocks', this.blocksDefinition, uid)
       } catch (e) {
         return { component: 'Error', config: { error: e.message } }
       }
+    },
+    isEditable() {
+      return this.createMode || this.blocksEditable
     }
   },
   methods: {
-    onPageAfterIn () {
+    onPageAfterIn() {
       if (window) {
         window.addEventListener('keydown', this.keyDown)
       }
       this.load()
     },
-    onPageBeforeOut () {
+    onPageBeforeOut() {
       if (window) {
         window.removeEventListener('keydown', this.keyDown)
       }
     },
-    onEditorInput (value) {
-      this.blocksDefinition = value
-      if (!this.loading) {
-        this.dirty = true
-      }
-    },
-    refreshBlocks () {
+    onEditorInput: useThrottleFn(
+      function (value) {
+        this.blocksDefinition = value
+        if (!this.loading) {
+          this.dirty = true
+          this.refreshBlocks()
+        }
+      },
+      300,
+      true
+    ),
+    refreshBlocks() {
       this.previewKey = f7.utils.id()
     },
-    previewClosed () {
+    previewClosed() {
       this.previewOpened = false
       this.previewMode = 'blockly'
     },
-    togglePreviewMode (mode) {
+    togglePreviewMode(mode) {
       this.previewMode = mode
       if (mode === 'code') {
         this.previewBlockSource = this.$refs.blocklyPreviewEditor.getBlocks()
         this.previewGeneratedCode = this.$refs.blocklyPreviewEditor.getCode()
       }
     },
-    keyDown (ev) {
+    keyDown(ev) {
       if ((ev.ctrlKey || ev.metaKey) && !(ev.altKey || ev.shiftKey)) {
         switch (ev.keyCode) {
           case 66:
@@ -252,12 +259,12 @@ export default {
         }
       }
     },
-    load () {
+    load() {
       if (this.loading) return
       this.loading = true
       if (this.createMode) {
         const uid = f7.utils.id()
-        this.blocksDefinition = YAML.stringify({
+        this.blocksDefinition = toFileYAMLSyntax('blocks', {
           uid: 'blocklibrary_' + uid,
           tags: [],
           component: 'BlockLibrary',
@@ -316,14 +323,16 @@ export default {
               }
             ]
           }
-        }, { toStringOptions })
+        })
         nextTick(() => {
           this.loading = false
           this.ready = true
         })
       } else {
         this.$oh.api.get('/rest/ui/components/ui:blocks/' + this.uid).then((data) => {
-          this.blocksDefinition = YAML.stringify(data, { toStringOptions })
+          this.blocksEditable = data.editable ?? true
+          delete data.editable
+          this.blocksDefinition = toFileYAMLSyntax('blocks', data)
           nextTick(() => {
             this.loading = false
             this.ready = true
@@ -331,7 +340,8 @@ export default {
         })
       }
     },
-    save (stay) {
+    save(stay) {
+      if (!this.isEditable) return
       if (!this.blocks.uid) {
         f7.dialog.alert('Please give an ID to the block library')
         return
@@ -341,35 +351,25 @@ export default {
         return
       }
 
-      const promise = (this.createMode)
+      const promise = this.createMode
         ? this.$oh.api.postPlain('/rest/ui/components/ui:blocks', JSON.stringify(this.blocks), 'text/plain', 'application/json')
         : this.$oh.api.put('/rest/ui/components/ui:blocks/' + this.blocks.uid, this.blocks)
-      promise.then((data) => {
-        this.dirty = false
-        if (this.createMode) {
-          f7.toast.create({
-            text: 'Block library created',
-            destroyOnClose: true,
-            closeTimeout: 2000
-          }).open()
-          this.f7router.navigate(this.f7route.url.replace('/add', '/' + this.blocks.uid), { reloadCurrent: true })
-          this.load()
-        } else {
-          f7.toast.create({
-            text: 'Block library updated',
-            destroyOnClose: true,
-            closeTimeout: 2000
-          }).open()
-        }
-        // f7.emit('sidebarRefresh', null)
-        // if (!stay) this.f7router.back()
-      }).catch((err) => {
-        f7.toast.create({
-          text: 'Error while saving block library: ' + err,
-          destroyOnClose: true,
-          closeTimeout: 2000
-        }).open()
-      })
+      promise
+        .then((data) => {
+          this.dirty = false
+          if (this.createMode) {
+            showToast('Block library created')
+            this.f7router.navigate(this.f7route.url.replace('/add', '/' + this.blocks.uid), { reloadCurrent: true })
+            this.load()
+          } else {
+            showToast('Block library updated')
+          }
+          // f7.emit('sidebarRefresh', null)
+          // if (!stay) this.f7router.back()
+        })
+        .catch((err) => {
+          showToast('Error while saving block library: ' + err)
+        })
     }
   }
 }

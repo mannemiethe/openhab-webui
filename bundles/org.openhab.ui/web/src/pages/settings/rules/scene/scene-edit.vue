@@ -1,19 +1,16 @@
 <template>
-  <f7-page @page:afterin="onPageAfterIn" @page:afterout="onPageAfterOut" class="scene-edit">
+  <f7-page ref="scene-edit-page" @page:afterin="onPageAfterIn" @page:afterout="onPageAfterOut" class="scene-edit">
     <f7-navbar no-hairline>
-      <oh-nav-content :title="(createMode ? 'Create scene' : rule.name) + dirtyIndicator"
-                      :editable="isEditable"
-                      :save-link="`Save${$device.desktop ? ' (Ctrl-S)' : ''}`"
-                      @save="save()"
-                      :f7router />
+      <oh-nav-content
+        :title="(createMode ? 'Create scene' : rule.name) + dirtyIndicator"
+        :editable="isEditable"
+        :save-link="`Save${$device.desktop ? ' (Ctrl-S)' : ''}`"
+        @save="save()"
+        :f7router />
     </f7-navbar>
     <f7-toolbar tabbar position="top">
-      <f7-link @click="switchTab('design', fromYaml)" :tab-link-active="currentTab === 'design'" tab-link="#design">
-        Design
-      </f7-link>
-      <f7-link @click="switchTab('code', toYaml)" :tab-link-active="currentTab === 'code'" tab-link="#code">
-        Code
-      </f7-link>
+      <f7-link @click="switchTab('design', fromYaml)" :tab-link-active="currentTab === 'design'" tab-link="#design"> Design </f7-link>
+      <f7-link @click="switchTab('code', toYaml)" :tab-link-active="currentTab === 'code'" tab-link="#code"> Code </f7-link>
     </f7-toolbar>
     <f7-tabs class="scene-editor-tabs">
       <f7-tab id="design" :tab-active="currentTab === 'design'">
@@ -21,29 +18,29 @@
           <f7-col v-if="!createMode">
             <div class="float-right align-items-flex-start align-items-center">
               <!-- <f7-toggle class="enable-toggle"></f7-toggle> -->
-              <f7-link :icon-color="(rule.status.statusDetail === 'DISABLED') ? 'orange' : 'gray'"
-                       :tooltip="((rule.status.statusDetail === 'DISABLED') ? 'Enable' : 'Disable') + (($device.desktop) ? ' (Ctrl-D)' : '')"
-                       icon-ios="f7:pause_circle"
-                       icon-md="f7:pause_circle"
-                       icon-aurora="f7:pause_circle"
-                       icon-size="32"
-                       color="orange"
-                       @click="toggleDisabled" />
-              <f7-link :tooltip="'Activate Now' + (($device.desktop) ? ' (Ctrl-R)' : '')"
-                       icon-ios="f7:play_round"
-                       icon-md="f7:play_round"
-                       icon-aurora="f7:play_round"
-                       icon-size="32"
-                       :color="(rule.status.status === 'IDLE') ? 'blue' : 'gray'"
-                       @click="runNow" />
+              <f7-link
+                :icon-color="rule.status.statusDetail === 'DISABLED' ? 'orange' : 'gray'"
+                :tooltip="(rule.status.statusDetail === 'DISABLED' ? 'Enable' : 'Disable') + ($device.desktop ? ' (Ctrl-D)' : '')"
+                icon-ios="f7:pause_circle"
+                icon-md="f7:pause_circle"
+                icon-aurora="f7:pause_circle"
+                icon-size="32"
+                color="orange"
+                @click="toggleDisabled" />
+              <f7-link
+                :tooltip="'Activate Now' + ($device.desktop ? ' (Ctrl-R)' : '')"
+                icon-ios="f7:play_round"
+                icon-md="f7:play_round"
+                icon-aurora="f7:play_round"
+                icon-size="32"
+                :color="rule.status.status === 'IDLE' ? 'blue' : 'gray'"
+                @click="runNow" />
             </div>
             Status:
-            <f7-chip class="margin-left"
-                     :text="rule.status.status"
-                     :color="ruleStatusBadgeColor(rule.status)" />
+            <f7-chip class="margin-left" :text="rule.status.status" :color="ruleStatusBadgeColor(rule.status)" />
             <div>
-              <strong>{{ (rule.status.statusDetail !== 'NONE') ? rule.status.statusDetail : '&nbsp;' }}</strong>
-              <br>
+              <strong>{{ rule.status.statusDetail !== 'NONE' ? rule.status.statusDetail : '&nbsp;' }}</strong>
+              <br />
               <div v-if="rule.status.description">
                 {{ rule.status.description }}
               </div>
@@ -57,89 +54,87 @@
             <f7-chip class="margin-left" text="________" />
             <div>
               <strong>____ _______</strong>
-              <br>
+              <br />
             </div>
           </f7-col>
         </f7-block>
 
-        <rule-general-settings :rule="rule"
-                               :ready="ready"
-                               :createMode="createMode"
-                               :inSceneEditor="true" />
+        <rule-general-settings :rule="rule" :ready="ready" :createMode="createMode" :inSceneEditor="true" />
 
         <f7-block v-if="ready" class="block-narrow">
           <f7-block-footer v-if="!isEditable" class="no-margin padding-left">
-            <f7-icon f7="lock_fill" size="12" color="gray" />&nbsp;Note: this rule is not editable because it has been
-            provisioned from a file.
+            <f7-icon f7="lock_fill" size="12" color="gray" />&nbsp;Note: this rule is not editable because it has been provisioned from a
+            file.
           </f7-block-footer>
           <!-- <f7-col v-if="isEditable" class="text-align-right justify-content-flex-end">
             </f7-col> -->
           <f7-col class="scene-modules">
-            <div class="no-padding float-right" v-if="rule['actions'].length > 0">
-              <f7-button @click="toggleModuleControls"
-                         small
-                         outline
-                         :fill="showModuleControls"
-                         sortable-toggle=".sortable"
-                         style="margin-top: -3px; margin-right: 5px"
-                         color="gray"
-                         icon-size="12"
-                         icon-ios="material:wrap_text"
-                         icon-md="material:wrap_text"
-                         icon-aurora="material:wrap_text">
+            <div v-if="rule['actions'].length > 0" class="no-padding float-right">
+              <f7-button
+                @click="toggleModuleControls"
+                small
+                outline
+                :fill="showModuleControls"
+                sortable-toggle=".sortable"
+                style="margin-top: -3px; margin-right: 5px"
+                color="gray"
+                icon-size="12"
+                icon-ios="material:wrap_text"
+                icon-md="material:wrap_text"
+                icon-aurora="material:wrap_text">
                 &nbsp;Reorder
               </f7-button>
             </div>
             <div>
-              <f7-block-title medium style="margin-bottom: var(--f7-list-margin-vertical)">
-                Configuration
-              </f7-block-title>
-              <f7-list class="scene-items"
-                       sortable
-                       swipeout
-                       media-list
-                       @sortable:sort="(ev) => reorderModule(ev, 'actions')">
-                <f7-list-item v-for="mod in rule['actions']"
-                              :title="mod.configuration.itemName"
-                              media
-                              :key="mod.id"
-                              :link="!showModuleControls"
-                              @click="(ev) => editModule(ev, mod)"
-                              swipeout
-                              no-chevron>
+              <f7-block-title medium style="margin-bottom: var(--f7-list-margin-vertical)"> Configuration </f7-block-title>
+              <f7-list class="scene-items" sortable swipeout media-list @sortable:sort="(ev) => reorderModule(ev, 'actions')">
+                <f7-list-item
+                  v-for="mod in rule['actions']"
+                  :title="mod.configuration.itemName"
+                  media
+                  :key="mod.id"
+                  :link="!showModuleControls"
+                  @click="(ev) => editModule(ev, mod)"
+                  swipeout
+                  no-chevron>
                   <template #media>
-                    <f7-link icon-color="red"
-                             icon-aurora="f7:minus_circle_filled"
-                             icon-ios="f7:minus_circle_filled"
-                             icon-md="material:remove_circle_outline"
-                             @click="showSwipeout" />
+                    <f7-link
+                      icon-color="red"
+                      icon-aurora="f7:minus_circle_filled"
+                      icon-ios="f7:minus_circle_filled"
+                      icon-md="material:remove_circle_outline"
+                      @click="showSwipeout" />
                   </template>
                   <template #inner>
                     <span class="inline-command-input">
-                      <f7-input type="text"
-                                outline
-                                :value="mod.configuration.command"
-                                @input="updateActionModule([mod.configuration.itemName, $event.target.value])"
-                                :disabled="showModuleControls ? true : null" />
+                      <f7-input
+                        type="text"
+                        outline
+                        :value="mod.configuration.command"
+                        @input="updateActionModule([mod.configuration.itemName, $event.target.value])"
+                        :disabled="showModuleControls ? true : null" />
                     </span>
                   </template>
                   <template #after>
                     <span>
-                      <f7-link icon-f7="arrow_uturn_left_circle"
-                               class="margin-left-half"
-                               color="blue"
-                               tooltip="Set to current state"
-                               @click="(ev) => updateCommandFromCurrentState(ev, mod)" />
-                      <f7-link icon-f7="arrowtriangle_right_circle"
-                               class="margin-left-half"
-                               color="blue"
-                               tooltip="Test command"
-                               @click="(ev) => testCommand(ev, mod)" />
+                      <f7-link
+                        icon-f7="arrow_uturn_left_circle"
+                        class="margin-left-half"
+                        color="blue"
+                        tooltip="Set to current state"
+                        @click="(ev) => updateCommandFromCurrentState(ev, mod)" />
+                      <f7-link
+                        icon-f7="arrowtriangle_right_circle"
+                        class="margin-left-half"
+                        color="blue"
+                        tooltip="Test command"
+                        @click="(ev) => testCommand(ev, mod)" />
                     </span>
                   </template>
                   <f7-swipeout-actions right>
-                    <f7-swipeout-button @click="(ev) => deleteModule(ev, 'actions', mod)"
-                                        style="background-color: var(--f7-swipeout-delete-button-bg-color)">
+                    <f7-swipeout-button
+                      @click="(ev) => deleteModule(ev, 'actions', mod)"
+                      style="background-color: var(--f7-swipeout-delete-button-bg-color)">
                       Delete
                     </f7-swipeout-button>
                   </f7-swipeout-actions>
@@ -154,36 +149,35 @@
                   </template>
                 </f7-list-item> -->
                 <f7-list-group>
-                  <item-picker label="Select Items"
-                               name="newItem"
-                               :multiple="true"
-                               :value="selectedItems"
-                               @input="selectItems"
-                               :no-after="true"
-                               class="scene-items-picker" />
-                <!-- <f7-list-button :color="(showModuleControls) ? 'gray' : 'blue'" :title="sectionLabels[section][1]"></f7-list-button> -->
+                  <item-picker
+                    label="Select Items"
+                    name="newItem"
+                    :multiple="true"
+                    :value="selectedItems"
+                    @input="selectItems"
+                    :no-after="true"
+                    class="scene-items-picker" />
+                  <!-- <f7-list-button :color="(showModuleControls) ? 'gray' : 'blue'" :title="sectionLabels[section][1]"></f7-list-button> -->
                 </f7-list-group>
               </f7-list>
             </div>
           </f7-col>
           <f7-col v-if="isEditable && !createMode">
             <f7-list>
-              <f7-list-button color="blue" @click="duplicateRule">
-                Duplicate Scene
-              </f7-list-button>
-              <f7-list-button color="red" @click="deleteRule">
-                Remove Scene
-              </f7-list-button>
+              <f7-list-button color="blue" @click="duplicateRule"> Duplicate Scene </f7-list-button>
+              <f7-list-button color="red" @click="deleteRule"> Remove Scene </f7-list-button>
             </f7-list>
           </f7-col>
         </f7-block>
       </f7-tab>
       <f7-tab id="code" :tab-active="currentTab === 'code'">
-        <editor v-if="currentTab === 'code'"
-                class="scene-code-editor"
-                mode="application/vnd.openhab.rule+yaml"
-                :value="ruleYaml"
-                @input="onEditorInput" />
+        <editor
+          v-if="currentTab === 'code'"
+          class="scene-code-editor"
+          mode="application/vnd.openhab.rule+yaml"
+          :value="ruleYaml"
+          @input="onEditorInput"
+          @save="save()" />
         <!-- <pre class="yaml-message padding-horizontal" :class="[yamlError === 'OK' ? 'text-color-green' : 'text-color-red']">{{yamlError}}</pre> -->
       </f7-tab>
     </f7-tabs>
@@ -232,7 +226,7 @@
   .item-after
     display none
 
-.scene-code-editor.v-codemirror
+.scene-code-editor
   position absolute
   height calc(100% - var(--f7-navbar-height) - var(--f7-toolbar-height))
 
@@ -245,7 +239,7 @@
 
 <script>
 import { nextTick, defineAsyncComponent } from 'vue'
-import { f7, theme } from 'framework7-vue'
+import { f7 } from 'framework7-vue'
 
 import YAML from 'yaml'
 import cloneDeep from 'lodash/cloneDeep'
@@ -255,13 +249,15 @@ import SceneConfigureItemPopup from './scene-configure-item-popup.vue'
 
 import RuleMixin from '../rule-edit-mixin'
 import RuleStatus from '@/components/rule/rule-status-mixin'
-import DirtyMixin from '../../dirty-mixin'
 
 import ItemPicker from '@/components/config/controls/item-picker.vue'
 import RuleGeneralSettings from '@/components/rule/rule-general-settings.vue'
+import { showToast } from '@/js/dialog-promises'
+import { useDirty } from '@/pages/useDirty'
+import { useTabs } from '@/pages/useTabs'
 
 export default {
-  mixins: [RuleMixin, RuleStatus, DirtyMixin],
+  mixins: [RuleMixin, RuleStatus],
   components: {
     RuleGeneralSettings,
     ItemPicker,
@@ -274,10 +270,12 @@ export default {
     f7router: Object,
     f7route: Object
   },
-  setup () {
-    return { theme }
+  setup() {
+    const { dirty, dirtyIndicator } = useDirty('scene-edit-page')
+    const { currentTab, switchTab } = useTabs('design')
+    return { dirty, dirtyIndicator, currentTab, switchTab }
   },
-  data () {
+  data() {
     return {
       ready: false,
       loading: false,
@@ -288,7 +286,6 @@ export default {
         conditions: [],
         triggers: []
       },
-      currentTab: 'design',
       currentModuleType: null,
       currentModule: null,
       currentModuleConfig: {},
@@ -300,7 +297,8 @@ export default {
   watch: {
     rule: {
       handler: function (newRule, oldRule) {
-        if (!this.loading) { // ignore initial rule assignment
+        if (!this.loading) {
+          // ignore initial rule assignment
           // create rule object clone in order to be able to delete status part
           // which can change from eventsource but doesn't mean a rule modification
           let ruleClone = cloneDeep(this.rule)
@@ -314,7 +312,7 @@ export default {
     }
   },
   methods: {
-    load () {
+    load() {
       if (this.loading) return
       this.loading = true
 
@@ -364,7 +362,7 @@ export default {
         }
       })
     },
-    save (noToast) {
+    save(noToast) {
       if (!this.isEditable) return Promise.reject()
       if (this.currentTab === 'code') {
         if (!this.fromYaml()) {
@@ -381,87 +379,66 @@ export default {
       }
       let saveRule = cloneDeep(this.rule)
       saveRule.tags.push('Scene')
-      const promise = (this.createMode)
+      const promise = this.createMode
         ? this.$oh.api.postPlain('/rest/rules', JSON.stringify(saveRule), 'text/plain', 'application/json')
         : this.$oh.api.put('/rest/rules/' + saveRule.uid, saveRule)
-      return promise.then((data) => {
-        this.dirty = false
-        if (this.createMode) {
-          f7.toast.create({
-            text: 'Scene created',
-            destroyOnClose: true,
-            closeTimeout: 2000
-          }).open()
-          this.f7router.navigate(this.f7route.url.replace('/add', '/' + this.rule.uid), { reloadCurrent: true })
-          this.load()
-        } else {
-          if (!noToast) {
-            f7.toast.create({
-              text: 'Scene updated',
-              destroyOnClose: true,
-              closeTimeout: 2000
-            }).open()
+      return promise
+        .then((data) => {
+          this.dirty = false
+          if (this.createMode) {
+            showToast('Scene created')
+            this.f7router.navigate(this.f7route.url.replace('/add', '/' + this.rule.uid), { reloadCurrent: true })
+            this.load()
+          } else {
+            if (!noToast) {
+              showToast('Scene updated')
+            }
+            this.savedRule = cloneDeep(this.rule)
           }
-          this.savedRule = cloneDeep(this.rule)
-        }
-      }).catch((err) => {
-        f7.toast.create({
-          text: 'Error while saving scene: ' + err,
-          destroyOnClose: true,
-          closeTimeout: 2000
-        }).open()
-      })
+        })
+        .catch((err) => {
+          showToast('Error while saving scene: ' + err)
+        })
     },
-    runNow () {
+    runNow() {
       if (this.createMode) return
       if (this.rule.status.status === 'RUNNING' || this.rule.status.status === 'UNINITIALIZED') {
-        return f7.toast.create({
-          text: `Scene cannot be activated ${(this.rule.status.status === 'RUNNING') ? 'while currently activating, please wait' : 'if it is uninitialized'}!`,
-          destroyOnClose: true,
-          closeTimeout: 2000
-        }).open()
+        showToast(
+          `Scene cannot be activated ${this.rule.status.status === 'RUNNING' ? 'while currently activating, please wait' : 'if it is uninitialized'}!`
+        )
       }
-      f7.toast.create({
-        text: 'Activating scene',
-        destroyOnClose: true,
-        closeTimeout: 2000
-      }).open()
+      showToast('Activating scene')
 
-      const savePromise = (this.isEditable && this.dirty) ? this.save(true) : Promise.resolve()
+      const savePromise = this.isEditable && this.dirty ? this.save(true) : Promise.resolve()
 
       savePromise.then(() => {
         this.$oh.api.postPlain('/rest/rules/' + this.rule.uid + '/runnow', '').catch((err) => {
-          f7.toast.create({
-            text: 'Error while activating scene: ' + err,
-            destroyOnClose: true,
-            closeTimeout: 2000
-          }).open()
+          showToast('Error while activating scene: ' + err)
         })
       })
     },
-    duplicateRule () {
+    duplicateRule() {
       let ruleClone = cloneDeep(this.rule)
-      this.f7router.navigate({
-        url: '/settings/scenes/duplicate'
-      }, {
-        props: {
-          ruleCopy: ruleClone
-        }
-      })
-    },
-    deleteRule () {
-      f7.dialog.confirm(
-        `Are you sure you want to delete ${this.rule.name}?`,
-        'Delete Scene',
-        () => {
-          this.$oh.api.delete('/rest/rules/' + this.rule.uid).then(() => {
-            this.dirty = false
-            this.f7router.back('/settings/scenes/', { force: true })
-          })
+      this.f7router.navigate(
+        {
+          url: '/settings/scenes/duplicate'
+        },
+        {
+          props: {
+            ruleCopy: ruleClone
+          }
         }
       )
     },
-    editModule (ev, mod) {
+    deleteRule() {
+      f7.dialog.confirm(`Are you sure you want to delete ${this.rule.name}?`, 'Delete Scene', () => {
+        this.$oh.api.delete('/rest/rules/' + this.rule.uid).then(() => {
+          this.dirty = false
+          this.f7router.back('/settings/scenes/', { force: true })
+        })
+      })
+    },
+    editModule(ev, mod) {
       if (ev.target.tagName.toLowerCase() === 'input') {
         ev.cancelBubble = true
         return
@@ -479,25 +456,28 @@ export default {
         component: SceneConfigureItemPopup
       }
 
-      this.f7router.navigate({
-        url: 'item-config',
-        route: {
-          path: 'item-config',
-          popup
+      this.f7router.navigate(
+        {
+          url: 'item-config',
+          route: {
+            path: 'item-config',
+            popup
+          }
+        },
+        {
+          props: {
+            rule: this.rule,
+            module: mod
+          }
         }
-      }, {
-        props: {
-          rule: this.rule,
-          module: mod
-        }
-      })
+      )
 
       f7.once('sceneItemConfigUpdate', this.updateActionModule)
       f7.once('sceneItemConfigClosed', () => {
         f7.off('sceneItemConfigUpdate', this.updateActionModule)
       })
     },
-    deleteModule (ev, section, mod) {
+    deleteModule(ev, section, mod) {
       let swipeoutElement = ev.target
       if (!this.isEditable) return
       ev.cancelBubble = true
@@ -513,17 +493,17 @@ export default {
         this.buildActionModules()
       })
     },
-    selectItems (items) {
+    selectItems(items) {
       console.log(items)
       this.selectedItems = items
       this.buildActionModules()
     },
-    reorderModule (ev, section) {
+    reorderModule(ev, section) {
       const newSection = [...this.rule[section]]
       newSection.splice(ev.to, 0, newSection.splice(ev.from, 1)[0])
       this.rule.section = newSection
     },
-    buildActionModules () {
+    buildActionModules() {
       const modulesToRemove = this.rule.actions.filter((a) => this.selectedItems.indexOf(a.configuration.itemName) < 0)
       if (modulesToRemove.length > 0) console.debug('Removing: ' + modulesToRemove.map((m) => m.configuration.itemName).join(', '))
       this.rule.actions = this.rule.actions.filter((a) => this.selectedItems.indexOf(a.configuration.itemName) >= 0)
@@ -552,31 +532,27 @@ export default {
         })
       })
     },
-    updateCommandFromCurrentState (ev, module) {
+    updateCommandFromCurrentState(ev, module) {
       if (ev) ev.cancelBubble = true
       const itemName = module.configuration.itemName
       this.$oh.api.getPlain('/rest/items/' + itemName + '/state').then((state) => {
         module.configuration.command = state
       })
     },
-    testCommand (ev, module) {
+    testCommand(ev, module) {
       if (ev) ev.cancelBubble = true
       const itemName = module.configuration.itemName
       const command = module.configuration.command
       this.$oh.api.postPlain('/rest/items/' + itemName, command, 'text/plain', 'text/plain').then(() => {
-        f7.toast.create({
-          text: `Updated desired state of ${itemName} to ${command}`,
-          destroyOnClose: true,
-          closeTimeout: 2000
-        }).open()
+        showToast(`Updated desired state of ${itemName} to ${command}`)
       })
     },
-    updateActionModule (params) {
+    updateActionModule(params) {
       const [itemName, command] = params
       const module = this.rule.actions.find((a) => a.configuration.itemName === itemName)
       if (module) module.configuration.command = command
     },
-    toYaml () {
+    toYaml() {
       const itemsConfig = {}
       this.rule.actions.forEach((a) => {
         itemsConfig[a.configuration.itemName] = a.configuration.command
@@ -588,7 +564,7 @@ export default {
         conditions: this.rule.conditions
       })
     },
-    fromYaml () {
+    fromYaml() {
       if (!this.isEditable) return
       try {
         const updatedRule = YAML.parse(this.ruleYaml)

@@ -1,66 +1,57 @@
 <template>
   <div class="habot-wrapper col">
     <div style="display: block">
-      <f7-input type="text"
-                :placeholder="greeting"
-                class="habot-chatbar searchbar"
-                :class="{ highlight: focused || value }"
-                clear-button
-                @focus="chatboxFocused"
-                :value="value"
-                @change="chatboxSend"
-                @blur="chatboxBlur" />
-      <speech-button class="habot-icon"
-                     v-show="!focused"
-                     :lang="language"
-                     @result="speechResult" />
+      <f7-input
+        type="text"
+        :placeholder="greeting"
+        class="habot-chatbar searchbar"
+        :class="{ highlight: focused || value }"
+        clear-button
+        @focus="chatboxFocused"
+        :value="value"
+        @change="chatboxSend"
+        @blur="chatboxBlur" />
+      <speech-button v-show="!focused" class="habot-icon" :lang="language" @result="speechResult" />
     </div>
     <f7-list v-if="focused && !value" class="chat-suggestions" no-hairlines-md>
-      <f7-list-item v-for="suggestion in suggestions"
-                    :key="suggestion"
-                    @click="chooseSuggestion(suggestion)"
-                    link
-                    :title="suggestion"
-                    :footer="history.length === 0 ? t('habot.example.label') : ''"
-                    no-chevron />
-      <f7-list-button v-if="history.length > 0"
-                      color="red"
-                      :title="t('habot.clearHistory')"
-                      @click="clearHistory" />
+      <f7-list-item
+        v-for="suggestion in suggestions"
+        :key="suggestion"
+        @click="chooseSuggestion(suggestion)"
+        link
+        :title="suggestion"
+        :footer="history.length === 0 ? t('habot.example.label') : ''"
+        no-chevron />
+      <f7-list-button v-if="history.length > 0" color="red" :title="t('habot.clearHistory')" @click="clearHistory" />
     </f7-list>
-    <f7-message v-if="interimSpeechResult"
-                type="sent"
-                class="habot-query margin-bottom"
-                :text="interimSpeechResult"
-                color="gray"
-                first
-                tail />
-    <f7-message v-if="query && !focused && !interimSpeechResult"
-                type="sent"
-                class="habot-query margin-bottom"
-                :text="query"
-                color="blue"
-                first
-                tail />
-    <f7-message v-if="!interimSpeechResult && (answer || busy) && !focused"
-                type="received"
-                :typing="busy"
-                :text="(!busy) ? answer : null"
-                last
-                :tail="!hint" />
-    <f7-message v-if="hint && !focused && !interimSpeechResult"
-                type="received"
-                :text="hint"
-                last
-                tail />
+    <f7-message
+      v-if="interimSpeechResult"
+      type="sent"
+      class="habot-query margin-bottom"
+      :text="interimSpeechResult"
+      color="gray"
+      first
+      tail />
+    <f7-message
+      v-if="query && !focused && !interimSpeechResult"
+      type="sent"
+      class="habot-query margin-bottom"
+      :text="query"
+      color="blue"
+      first
+      tail />
+    <f7-message
+      v-if="!interimSpeechResult && (answer || busy) && !focused"
+      type="received"
+      :typing="busy"
+      :text="!busy ? answer : null"
+      last
+      :tail="!hint" />
+    <f7-message v-if="hint && !focused && !interimSpeechResult" type="received" :text="hint" last tail />
     <generic-widget-component v-if="cardContext && !focused && !interimSpeechResult" :context="cardContext" />
-    <div v-if="query && !focused && answer && !busy && !interimSpeechResult"
-         class="display-flex justify-content-space-between padding">
+    <div v-if="query && !focused && answer && !busy && !interimSpeechResult" class="display-flex justify-content-space-between padding">
       <span />
-      <f7-button outline
-                 round
-                 color="blue"
-                 @click="endSession">
+      <f7-button outline round color="blue" @click="endSession">
         {{ t('habot.dismiss') }}
       </f7-button>
     </div>
@@ -137,7 +128,7 @@ export default {
     SpeechButton
   },
   emits: ['session-started', 'session-end'],
-  setup () {
+  setup() {
     const { t, mergeLocaleMessage } = useI18n({ useScope: 'local' })
 
     loadLocaleMessages('habot', mergeLocaleMessage)
@@ -146,7 +137,7 @@ export default {
       t
     }
   },
-  data () {
+  data() {
     return {
       greeting: null,
       value: '',
@@ -161,42 +152,42 @@ export default {
       focused: false
     }
   },
-  mounted () {
+  mounted() {
     this.greet()
     const savedHistory = localStorage.getItem('openhab.ui:chat.history')
-    this.history = (savedHistory) ? savedHistory.split('|') : []
+    this.history = savedHistory ? savedHistory.split('|') : []
   },
   computed: {
-    cardContext () {
+    cardContext() {
       if (!this.card) return null
       return {
         store: useStatesStore().trackedItems,
         component: this.card
       }
     },
-    suggestions () {
-      return (this.history.length > 0) ? this.history : [this.t('habot.example1'), this.t('habot.example2'), this.t('habot.example3')]
+    suggestions() {
+      return this.history.length > 0 ? this.history : [this.t('habot.example1'), this.t('habot.example2'), this.t('habot.example3')]
     }
   },
   methods: {
-    greet () {
+    greet() {
       this.$oh.api.get('/rest/habot/greet').then((resp) => {
         this.greeting = resp.answer
         this.language = resp.language
       })
     },
-    chatboxFocused () {
+    chatboxFocused() {
       this.focused = true
       this.$emit('session-started')
     },
-    chatboxBlur (ev) {
+    chatboxBlur(ev) {
       // delay in order to give a chance to choose a suggestion...
       setTimeout(() => {
         this.focused = false
         if (!this.query && !this.busy) this.$emit('session-end')
       }, 200)
     },
-    endSession () {
+    endSession() {
       this.query = ''
       this.answer = ''
       this.hint = ''
@@ -204,22 +195,22 @@ export default {
       this.greet()
       this.$emit('session-end')
     },
-    chatboxSend (ev) {
+    chatboxSend(ev) {
       this.query = this.value = ev.target.value
       ev.target.blur()
       this.sendQuery()
     },
-    chooseSuggestion (suggestion) {
+    chooseSuggestion(suggestion) {
       this.query = this.value = suggestion
       this.sendQuery()
     },
-    clearHistory () {
+    clearHistory() {
       this.focused = false
       localStorage.setItem('openhab.ui:chat.history', '')
       this.history = []
       this.endSession()
     },
-    speechResult (result) {
+    speechResult(result) {
       if (result.final) {
         this.query = result.text
         this.sendQuery(true)
@@ -228,7 +219,7 @@ export default {
         this.interimSpeechResult = result.text
       }
     },
-    sendQuery (fromSpeech) {
+    sendQuery(fromSpeech) {
       this.answer = ''
       this.hint = ''
       this.interimSpeechResult = null
@@ -259,7 +250,7 @@ export default {
         this.greeting = this.t('habot.anythingElse')
       })
     },
-    convertHABotCard (habotCard) {
+    convertHABotCard(habotCard) {
       if (!habotCard.ephemeral) {
         this.busy = false
         this.card = {

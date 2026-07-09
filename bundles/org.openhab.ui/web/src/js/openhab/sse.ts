@@ -1,26 +1,28 @@
 import { EventSourcePolyfill, NativeEventSource } from 'event-source-polyfill'
 import { getAccessToken, getTokenInCustomHeader, getBasicCredentials, getRequireToken } from './auth'
+import type { ItemState } from '../stores/useStatesStore'
 
 /**
  * An EventSource that is extended with a keepalive/heartbeat mechanism.
  */
-interface KeepaliveEventSource extends EventSource {
-  keepaliveTimer?: number;
-  setKeepalive: (seconds?: number) => void;
-  clearKeepalive: () => void;
+export interface KeepaliveEventSource extends EventSource {
+  keepaliveTimer?: number
+  setKeepalive: (seconds?: number) => void
+  clearKeepalive: () => void
 }
 
 let openSSEClients: KeepaliveEventSource[] = []
 
-type ReadyCallback = (data: string) => void;
-type MessageCallback = (data: any) => void;
-type ErrorCallback = () => void;
-type HeartbeatCallback = (isAlive: boolean) => void;
+type ReadyCallback = (data: string) => void
+type MessageCallback = (data: any) => void
+type StateMessageCallback = (data: Record<string, ItemState>) => void
+type ErrorCallback = () => void
+type HeartbeatCallback = (isAlive: boolean) => void
 
 /**
  * Creates and initializes a new Server-Sent Events (SSE) connection.
  */
-function newSSEConnection (
+function newSSEConnection(
   path: string,
   readyCallback: ReadyCallback | undefined,
   messageCallback: MessageCallback,
@@ -29,24 +31,27 @@ function newSSEConnection (
 ): KeepaliveEventSource {
   let eventSource: KeepaliveEventSource
   let reconnectSeconds = 1
-  const headers: Record<string, string> = {}
-
-  // Setup headers for authentication
-  const accessToken = getAccessToken()
-  if (accessToken && getRequireToken()) {
-    if (getTokenInCustomHeader()) {
-      headers['X-OPENHAB-TOKEN'] = accessToken
-    } else {
-      headers['Authorization'] = 'Bearer ' + accessToken
-    }
-  }
-  const basicCreds = getBasicCredentials()
-  if (basicCreds) {
-    headers['Authorization'] = 'Basic ' + btoa(basicCreds.id + ':' + basicCreds.password)
-  }
 
   // Core initialization logic
-  function initEventSource (): KeepaliveEventSource {
+  function initEventSource(): KeepaliveEventSource {
+    const headers: Record<string, string> = {}
+    // Setup headers for authentication.
+    // We make sure to always use the latest token here, otherwise it may
+    // have already expired when initEventSource() is called again after
+    // a connection failure.
+    const accessToken = getAccessToken()
+    if (accessToken && getRequireToken()) {
+      if (getTokenInCustomHeader()) {
+        headers['X-OPENHAB-TOKEN'] = accessToken
+      } else {
+        headers['Authorization'] = 'Bearer ' + accessToken
+      }
+    }
+    const basicCreds = getBasicCredentials()
+    if (basicCreds) {
+      headers['Authorization'] = 'Basic ' + btoa(basicCreds.id + ':' + basicCreds.password)
+    }
+
     let newEventSource: EventSource
 
     if (Object.keys(headers).length > 0) {
@@ -65,12 +70,15 @@ function newSSEConnection (
     es.setKeepalive = (seconds: number = 10) => {
       console.debug('Setting keepalive interval seconds', seconds)
       es.clearKeepalive()
-      es.keepaliveTimer = setTimeout(() => {
-        console.warn('SSE timeout error')
-        if (heartbeatCallback) {
-          heartbeatCallback(false)
-        }
-      }, (seconds + 2) * 1000)
+      es.keepaliveTimer = setTimeout(
+        () => {
+          console.warn('SSE timeout error')
+          if (heartbeatCallback) {
+            heartbeatCallback(false)
+          }
+        },
+        (seconds + 2) * 1000
+      )
     }
 
     es.clearKeepalive = () => {
@@ -81,7 +89,7 @@ function newSSEConnection (
     // Event handlers
     if (readyCallback) {
       es.addEventListener('ready', (e: MessageEvent) => {
-        readyCallback(e.data)
+        readyCallback(e.data as string)
       })
     }
 
@@ -89,7 +97,7 @@ function newSSEConnection (
       // Type 'e.data' is string, parse to get the object with 'interval'
       let evt: { interval: number }
       try {
-        evt = JSON.parse(e.data)
+        evt = JSON.parse(e.data as string) as { interval: number }
         es.setKeepalive(evt.interval)
       } catch (error) {
         console.error('Failed to parse "alive" message data:', error)
@@ -101,9 +109,9 @@ function newSSEConnection (
     })
 
     es.onmessage = (event: MessageEvent) => {
-      let evt: any
+      let evt: unknown
       try {
-        evt = JSON.parse(event.data)
+        evt = JSON.parse(event.data as string)
       } catch (error) {
         console.error('Failed to parse SSE message data:', error)
         return
@@ -163,7 +171,7 @@ const SSEService = {
    * @param errorCallback error callback
    * @param heartbeatCallback heartbeat callback
    */
-  connect (
+  connect(
     path: string,
     topics: string[],
     messageCallback: MessageCallback,
@@ -181,10 +189,10 @@ const SSEService = {
    * @param errorCallback error callback
    * @param [heartbeatCallback] heartbeat callback
    */
-  connectStateTracker (
+  connectStateTracker(
     path: string,
     readyCallback: ReadyCallback,
-    updateCallback: MessageCallback,
+    updateCallback: StateMessageCallback,
     errorCallback: ErrorCallback,
     heartbeatCallback?: HeartbeatCallback
   ): KeepaliveEventSource {
@@ -195,7 +203,7 @@ const SSEService = {
    * Close the given SSE connection.
    * @param es the SSE connection to close
    */
-  close (es: EventSource): void {
+  close(es: EventSource): void {
     if (!es) return
 
     const keepaliveEventSource = es as KeepaliveEventSource

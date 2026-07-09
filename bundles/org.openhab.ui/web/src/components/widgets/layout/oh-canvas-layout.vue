@@ -1,22 +1,16 @@
 <template>
-  <div ref="ohCanvasLayout"
-       class="oh-canvas-layout disable-user-select"
-       :class="context.editmode ? 'margin-top' : ''"
-       @keydown="onKeyDown"
-       @keyup="onKeyUp">
+  <div
+    ref="ohCanvasLayout"
+    class="oh-canvas-layout disable-user-select"
+    :class="context.editmode ? 'margin-top' : ''"
+    @keydown="onKeyDown"
+    @keyup="onKeyUp">
     <f7-block v-if="context.editmode">
       <f7-menu class="configure-layout-menu">
+        <f7-menu-item v-if="context.editmode.isEditable" @click="addItem" icon="margin-left" icon-f7="plus" text="Add Widget" />
         <f7-menu-item
-          @click="addItem"
-          icon="margin-left"
-          icon-f7="plus"
-          text="Add Widget" />
-        <f7-menu-item
-          v-if="context.clipboardtype"
-          @click="
-            context.editmode.pasteWidget(
-              activeLayer,
-              context.component)"
+          v-if="context.editmode.isEditable && context.clipboardtype"
+          @click="context.editmode.pasteWidget(activeLayer, context.component)"
           icon-f7="square_on_square" />
         <f7-menu-item
           @click="toggleGrid()"
@@ -24,26 +18,17 @@
           :icon-f7="grid.enable ? 'circle_grid_3x3_fill' : 'scircle_grid_3x3'"
           style="margin-left: auto"
           text="Grid" />
-        <f7-menu-item
-          v-if="config.embedSvg"
-          @click="flashEmbeddedSvgComponents()"
-          icon-f7="bolt" />
+        <f7-menu-item v-if="config.embedSvg" @click="flashEmbeddedSvgComponents()" icon-f7="bolt" />
         <f7-menu-item dropdown icon-f7="rectangle_3_offgrid">
           <f7-menu-dropdown right>
             <f7-menu-dropdown-item
-              @click="
-                context.editmode.configureWidget(
-                  context.component,
-                  context.parent,
-                  'oh-canvas-layout'
-                )
-              "
+              @click="context.editmode.configureWidget(context.component, context.parent, 'oh-canvas-layout')"
               href="#"
-              text="Configure Canvas Layout" />
+              text="Canvas Layout Settings" />
             <f7-menu-dropdown-item divider />
-            <f7-menu-dropdown-item @click="addLayer()" href="#" text="Add Layer" />
-            <f7-menu-dropdown-item @click="configureLayer()" href="#" text="Configure Layer" />
-            <template v-if="layerToolsVisible">
+            <f7-menu-dropdown-item v-if="context.editmode.isEditable" @click="addLayer()" href="#" text="Add Layer" />
+            <f7-menu-dropdown-item @click="configureLayer()" href="#" text="Layer Settings" />
+            <template v-if="layerToolsVisible && context.editmode.isEditable">
               <f7-menu-dropdown-item divider />
               <f7-menu-dropdown-item class="justify-content-center" text="Layers" />
               <f7-menu-dropdown-item
@@ -51,67 +36,62 @@
                 :key="idx"
                 @click="setActiveLayer(layout.length - idx - 1)"
                 href="#">
-                <span>{{ (obj.item.config && obj.item.config.layerName) ? obj.item.config.layerName : `Layer ${layout.length - idx}` }}</span>
-                <f7-icon class="margin-left" :f7="(layout.length - idx - 1) == actLyrIdx ? 'pencil_circle_fill' : ''" />
-                <f7-icon class="margin-left" :f7="!(obj.item.config && (obj.item.config.editVisible === false)) ? 'eye_fill' : 'eye_slash_fill'" />
+                <span>{{ obj.item.config && obj.item.config.layerName ? obj.item.config.layerName : `Layer ${layout.length - idx}` }}</span>
+                <f7-icon class="margin-left" :f7="layout.length - idx - 1 == actLyrIdx ? 'pencil_circle_fill' : ''" />
+                <f7-icon
+                  class="margin-left"
+                  :f7="!(obj.item.config && obj.item.config.editVisible === false) ? 'eye_fill' : 'eye_slash_fill'" />
               </f7-menu-dropdown-item>
               <f7-menu-dropdown-item divider />
               <f7-menu-dropdown-item @click="hideOtherLayers()" href="#" text="Hide Other Layers" />
               <f7-menu-dropdown-item @click="showOtherLayers()" href="#" text="Show Other Layers" />
               <f7-menu-dropdown-item divider />
-              <f7-menu-dropdown-item @click="setActiveLayer(context.editmode.bringWidgetToFront(activeLayer, context, 'canvas'))" href="#" text="Bring Layer to Front" />
-              <f7-menu-dropdown-item @click="setActiveLayer(context.editmode.moveWidgetDown(activeLayer, context, 'canvas'))" href="#" text="Move Layer Up" />
-              <f7-menu-dropdown-item @click="setActiveLayer(context.editmode.moveWidgetUp(activeLayer, context, 'canvas'))" href="#" text="Move Layer Down" />
-              <f7-menu-dropdown-item @click="setActiveLayer(context.editmode.sendWidgetToBack(activeLayer, context, 'canvas'))" href="#" text="Send Layer to Back" />
+              <f7-menu-dropdown-item
+                @click="setActiveLayer(context.editmode.bringWidgetToFront(activeLayer, context, 'canvas'))"
+                href="#"
+                text="Bring Layer to Front" />
+              <f7-menu-dropdown-item
+                @click="setActiveLayer(context.editmode.moveWidgetDown(activeLayer, context, 'canvas'))"
+                href="#"
+                text="Move Layer Up" />
+              <f7-menu-dropdown-item
+                @click="setActiveLayer(context.editmode.moveWidgetUp(activeLayer, context, 'canvas'))"
+                href="#"
+                text="Move Layer Down" />
+              <f7-menu-dropdown-item
+                @click="setActiveLayer(context.editmode.sendWidgetToBack(activeLayer, context, 'canvas'))"
+                href="#"
+                text="Send Layer to Back" />
               <f7-menu-dropdown-item divider />
               <f7-menu-dropdown-item @click="removeLayer()" href="#" text="Remove Layer" />
             </template>
           </f7-menu-dropdown>
         </f7-menu-item>
       </f7-menu>
-      <hr>
+      <hr />
     </f7-block>
     <div
       ref="canvasLayoutContainer"
       class="oh-canvas-layout-container"
       :style="{
-        background: context.editmode
-          ? 'var(--f7-page-master-border-color)'
-          : false,
+        background: context.editmode ? 'var(--f7-page-master-border-color)' : false,
         width: style.width + 'px',
         height: style.height + 'px',
         transform: `scale(${style.scale})`,
         'text-align': 'center',
         position: 'relative',
         overflow: context.editmode ? 'visible' : 'hidden',
-        '--oh-canvas-item-box-shadow': config.boxShadow
-          ? config.boxShadow
-          : '0px 0px 4px 2px #444',
-        '--oh-canvas-item-svg-shadow': config.filterShadow
-          ? config.filterShadow
-          : 'drop-shadow(0px 0px 4px #444)',
-        '--oh-canvas-item-text-shadow': config.textShadow
-          ? config.textShadow
-          : '#444 0px 0px 4px',
+        '--oh-canvas-item-box-shadow': config.boxShadow ? config.boxShadow : '0px 0px 4px 2px #444',
+        '--oh-canvas-item-svg-shadow': config.filterShadow ? config.filterShadow : 'drop-shadow(0px 0px 4px #444)',
+        '--oh-canvas-item-text-shadow': config.textShadow ? config.textShadow : '#444 0px 0px 4px',
         ...config.style
       }">
       <div
         v-if="config.imageUrl || config.imageSrcSet"
         v-show="!config.embedSvg || embeddedSvgReady"
         ref="canvasBackground"
-        style="
-          height: inherit;
-          width: inherit;
-          position: absolute;
-          top: 0;
-          left: 0;
-          overflow: hidden;
-        ">
-        <img
-          v-if="!config.embedSvg"
-          class="oh-canvas-background disable-user-drag"
-          :src="config.imageUrl"
-          :srcset="config.imageSrcSet">
+        style="height: inherit; width: inherit; position: absolute; top: 0; left: 0; overflow: hidden">
+        <img v-if="!config.embedSvg" class="oh-canvas-background disable-user-drag" :src="config.imageUrl" :srcset="config.imageSrcSet" />
       </div>
       <!-- Grid lines -->
       <div
@@ -124,20 +104,15 @@
           'background-image':
             'linear-gradient(-90deg, rgba(0, 0, 0, 0.1) 1px, transparent 1px), linear-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px)',
           'background-size': `${grid.pitch}px ${grid.pitch}px, ${grid.pitch}px ${grid.pitch}px`,
-          visibility: context.editmode && grid.enable ? 'inherit' : 'hidden',
+          visibility: context.editmode && grid.enable ? 'inherit' : 'hidden'
         }" />
-      <div
-        v-if="context.editmode"
-        style="
-          opacity: 0.3;
-          padding: 4px;
-          position: absolute;
-          width: 100%;
-        ">
+      <div v-if="context.editmode" style="opacity: 0.3; padding: 4px; position: absolute; width: 100%">
         {{ getCurrentScreenResolution() }}
-        <span v-if="isRetina()"><f7-icon
-          tooltip="Screen resolution shown is the fullscreen resolution for websites. Real screen resolution is bigger."
-          f7="info_circle" /></span>
+        <span v-if="isRetina()"
+          ><f7-icon
+            tooltip="Screen resolution shown is the fullscreen resolution for websites. Real screen resolution is bigger."
+            f7="info_circle"
+        /></span>
       </div>
       <oh-canvas-layer
         v-for="obj in layout"
@@ -171,21 +146,29 @@
 </style>
 
 <script>
-import { nextTick } from 'vue'
+import { computed, nextTick } from 'vue'
 import { f7 } from 'framework7-vue'
 
-import mixin from '../widget-mixin'
-import embeddedSvgMixin from '@/components/widgets/layout/oh-canvas-embedded-svg-mixin'
+import { useWidgetContext } from '@/components/widgets/useWidgetContext'
+import embeddedSvgMixin from '@/components/widgets/svg/oh-embedded-svg-mixin'
 import OhCanvasLayer from './oh-canvas-layer.vue'
 import { OhCanvasLayoutDefinition } from '@/assets/definitions/widgets/layout'
+import { showToast } from '@/js/dialog-promises'
 
 export default {
-  mixins: [mixin, embeddedSvgMixin],
+  mixins: [embeddedSvgMixin],
   widget: OhCanvasLayoutDefinition,
+  props: {
+    context: Object
+  },
   components: {
     OhCanvasLayer
   },
-  data () {
+  setup(props) {
+    const { config, childContext } = useWidgetContext(computed(() => props.context))
+    return { config, childContext }
+  },
+  data() {
     return {
       layout: [],
       screenWidth: Number,
@@ -209,14 +192,14 @@ export default {
     }
   },
   computed: {
-    activeLayer () {
+    activeLayer() {
       return this.context.component.slots.canvas[this.actLyrIdx]
     },
-    layerToolsVisible () {
+    layerToolsVisible() {
       return this.context.component.slots.canvas.length > 1
     }
   },
-  created () {
+  created() {
     if (this.config.layoutType === 'fixed' && this.config.fixedType === 'canvas') {
       this.style.width = this.screenWidth = this.config.screenWidth || 1280
       this.style.height = this.screenHeight = this.config.screenHeight || 720
@@ -232,26 +215,25 @@ export default {
     this.canvasLayoutStyle()
     this.computeLayout()
   },
-  mounted () {
+  mounted() {
     // Chrome reports a wrong size in fullscreen, store initial resolution and use non-dynamically.
     this.windowWidth = window.screen.width
     this.windowHeight = window.screen.height
     if (this.config.embedSvg && this.config.imageUrl) {
-      this.embedSvg().then(() => {
-        this.subscribeEmbeddedSvgListeners()
-        this.setupEmbeddedSvgStateTracking()
-        this.embeddedSvgReady = true
-      }).catch((err) => {
-        nextTick(() => {
-          f7.toast.create({
-            text: `Failed to embed SVG: ${err}`,
-            closeTimeout: 3000
-          }).open()
+      this.embedSvg()
+        .then(() => {
+          this.subscribeEmbeddedSvgListeners()
+          this.setupEmbeddedSvgStateTracking()
+          this.embeddedSvgReady = true
         })
-      })
+        .catch((err) => {
+          nextTick(() => {
+            showToast('Failed to embed SVG: ' + err)
+          })
+        })
     }
   },
-  beforeUnmount () {
+  beforeUnmount() {
     if (!this.context.editmode) {
       window.removeEventListener('resize', this.setDimensions)
     }
@@ -262,10 +244,10 @@ export default {
     }
   },
   methods: {
-    isRetina () {
+    isRetina() {
       return window.devicePixelRatio > 1
     },
-    getCurrentScreenResolution () {
+    getCurrentScreenResolution() {
       return (
         'Layout Size: ' +
         this.screenWidth +
@@ -278,7 +260,10 @@ export default {
         ')'
       )
     },
-    addItem () {
+    addItem() {
+      if (!this.context.editmode?.isEditable) {
+        return
+      }
       if (!this.context.component.slots?.canvas[0]) {
         this.addLayer()
       }
@@ -289,7 +274,10 @@ export default {
       })
       this.computeLayout()
     },
-    addLayer () {
+    addLayer() {
+      if (!this.context.editmode?.isEditable) {
+        return
+      }
       this.context.component.slots.canvas.push({
         component: 'oh-canvas-layer',
         config: {},
@@ -298,20 +286,30 @@ export default {
       this.actLyrIdx = this.context.component.slots.canvas.length - 1
       this.computeLayout()
     },
-    removeLayer () {
+    removeLayer() {
+      if (!this.context.editmode?.isEditable) {
+        return
+      }
       this.context.component.slots.canvas.splice(this.actLyrIdx, 1)
       this.setActiveLayer(Math.min(0, this.actLyrIdx--))
       this.computeLayout()
     },
-    setActiveLayer (idx) {
+    setActiveLayer(idx) {
+      if (!this.context.editmode?.isEditable) {
+        return this.actLyrIdx
+      }
       this.actLyrIdx = this.context.component.config.activeIdx = idx
       this.context.component.slots.canvas[this.actLyrIdx].config = this.context.component.slots.canvas[this.actLyrIdx].config || {}
       delete this.context.component.slots.canvas[this.actLyrIdx].config.editVisible
+      return this.actLyrIdx
     },
-    configureLayer () {
+    configureLayer() {
       this.context.editmode.configureWidget(this.context.component.slots.canvas[this.actLyrIdx], this.context.component, 'oh-canvas-layer')
     },
-    hideOtherLayers () {
+    hideOtherLayers() {
+      if (!this.context.editmode?.isEditable) {
+        return
+      }
       this.context.component.slots.canvas.forEach((layer, idx) => {
         if (idx !== this.actLyrIdx) {
           layer.config = layer.config || {}
@@ -319,24 +317,30 @@ export default {
         }
       })
     },
-    showOtherLayers () {
+    showOtherLayers() {
+      if (!this.context.editmode?.isEditable) {
+        return
+      }
       this.context.component.slots.canvas.forEach((layer, idx) => {
         if (idx !== this.actLyrIdx) {
           layer.config.editVisible = true
         }
       })
     },
-    toggleGrid () {
+    toggleGrid() {
+      if (!this.context.editmode?.isEditable) {
+        return
+      }
       this.context.component.config.gridEnable = this.grid.enable = !this.grid.enable
     },
-    canvasLayoutStyle () {
+    canvasLayoutStyle() {
       if (this.config.scale && !this.context.editmode) {
         this.style.scale = parent.innerWidth / this.screenWidth
       } else {
         this.style.scale = 1.0
       }
     },
-    computeLayout () {
+    computeLayout() {
       let layout = []
       if (this.context.component.slots?.canvas) {
         this.context.component.slots.canvas.forEach((item) => {
@@ -352,8 +356,9 @@ export default {
       }
       this.layout = layout
     },
-    onKeyDown (ev) {
-      let moveX = 0, moveY = 0
+    onKeyDown(ev) {
+      let moveX = 0,
+        moveY = 0
       switch (ev.key) {
         case 'Shift':
           this.preventDeactivation = true
@@ -380,14 +385,14 @@ export default {
         }
       }
     },
-    onKeyUp (ev) {
+    onKeyUp(ev) {
       switch (ev.key) {
         case 'Shift':
           this.preventDeactivation = false
           break
       }
     },
-    moveSelectedItems (exceptId, deltaX, deltaY) {
+    moveSelectedItems(exceptId, deltaX, deltaY) {
       let movedSomething = false
       this.selectedItems.forEach((i) => {
         if (i.id !== exceptId) {
@@ -397,20 +402,20 @@ export default {
       })
       return movedSomething
     },
-    ociSelected (item) {
+    ociSelected(item) {
       this.selectedItems.push(item)
     },
-    ociDeselected (item) {
+    ociDeselected(item) {
       this.selectedItems.splice(this.selectedItems.indexOf(item), 1)
     },
-    ociDragged (item, deltaX, deltaY) {
+    ociDragged(item, deltaX, deltaY) {
       // Move all selected (active) items, except the source one (already moved)
       // if there are several objects selected
       if (this.selectedItems.length > 1) {
         this.moveSelectedItems(item.id, deltaX, deltaY)
       }
     },
-    ociDragStop (itemId) {
+    ociDragStop(itemId) {
       // Notify items of drag end in case of multiple items selection
       if (this.selectedItems.length > 1) {
         this.selectedItems.forEach((item) => {

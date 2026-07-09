@@ -11,7 +11,7 @@ html
   --f7-chip-height 24px
   --f7-chip-font-size 13px
   --f7-menu-font-size 13px
-  --f7-block-margin-vertical 15px
+  --f7-block-margin-vertical 16px
   --f7-inline-label-font-size 14px
   --f7-input-font-size 14px
   --f7-button-height 28px
@@ -63,6 +63,8 @@ html
   --f7-table-card-header-height 48px
   --f7-table-head-cell-height 48px
   --f7-table-body-cell-height 40px
+  // toast
+  --f7-toast-font-size 16px
 
 /* Fixes for desktop devices */
 .device-desktop
@@ -71,7 +73,8 @@ html
     display none
 
 /* Fixes for dropdown menus */
-.menu-dropdown-content
+.menu-dropdown
+  cursor pointer
   z-index 7000 !important
 
 /* Fixes and adjustments for list input */
@@ -91,6 +94,12 @@ html
 /* Fixes for oh-cell opened cards behind other oh-cells */
 .oh-cell.card-opened
   z-index 5000 !important
+
+/* General adjustments */
+:root
+  --f7-button-text-transform none
+  --f7-button-large-text-transform none
+  --f7-button-small-text-transform none
 
 /* Adjustments for iOS & Material Design themes */
 .ios
@@ -114,21 +123,33 @@ html
   --f7-card-margin-vertical 10px
   --f7-card-margin-horizontal 10px
 
-/* Fixes for navbar title positioning */
+/* Fixes for navbar title positioning (force title to center) */
 .navbar-inner.navbar-inner-centered-title
 .ios & .navbar-inner.sliding
   display flex
   justify-content center !important
   .left
     position absolute
-    left var(--f7-navbar-inner-padding-left)
+    left calc(var(--f7-navbar-inner-padding-left) + var(--f7-safe-area-left))
   .title
     left 0 !important
     right 0 !important
-    max-width calc(100% - var(--f7-navbar-inner-padding-left) - 140px - var(--f7-navbar-inner-padding-right))
+    max-width calc(100% - var(--f7-navbar-inner-padding-left) - var(--f7-safe-area-left) - 140px - var(--f7-navbar-inner-padding-right) - var(--f7-safe-area-right))
   .right
     position absolute
-    right var(--f7-navbar-inner-padding-right)
+    right calc(var(--f7-navbar-inner-padding-right) + var(--f7-safe-area-right))
+
+/* Semantic Model related searchbar and expand treeview button */
+.model-searchbar
+  .searchbar-inner
+    padding-right var(--f7-searchbar-inner-padding-right)
+.model-expand-button
+  height unset
+  margin-right calc(8px + var(--f7-safe-area-right))
+  text-overflow unset
+  align-self center
+  .icon
+    margin-bottom 2.75px !important
 
 .no-page-transitions
   .smart-select-popup.popup.modal-in, .smart-select-popup.popup.modal-out
@@ -172,7 +193,8 @@ html
     --f7-tabbar-link-inactive-color rgba(255,255,255,0.54)
     --f7-tabbar-link-active-border-color #fff
 
-  .navbar
+  .navbar,
+  .dock-header
     --f7-bars-bg-color var(--f7-theme-color)
     --f7-bars-bg-color-rgb var(--f7-theme-color-rgb)
     --f7-bars-text-color #fff
@@ -180,6 +202,8 @@ html
     --f7-bars-link-color #fff
     --f7-navbar-large-title-text-color #fff
     --f7-bars-border-color transparent
+
+  .navbar
 
     &.navbar-large-transparent .title-large-text
       --f7-navbar-large-title-text-color #000
@@ -218,10 +242,17 @@ html
   --f7-navbar-large-collapse-progress 1
   opacity 0
 
-.navbar-large-hidden:not(.navbar-large-collapsed) .navbar-bg
-  opacity 0
+  .navbar-bg
+    opacity 0
 
-.toolbar.toolbar-bottom, .tabbar.tabbar-bottom
+.navbar-hidden
+  .navbar-bg
+    opacity 0
+
+.navbar-bg
+  transition opacity 0.3s ease
+
+.toolbar.toolbar-bottom, .tabbar.tabbar-bottom, .dock-toolbar
   --f7-theme-color #2196f3
   --f7-theme-color-rgb var(--f7-color-blue-rgb)
   --f7-theme-color-tint var(--f7-color-blue-tint)
@@ -246,6 +277,12 @@ html
   --f7-bars-link-color #fff
   --f7-tabbar-link-inactive-color rgba(255,255,255,0.54)
 
+// Color to autoselect - use as color="auto-dark" on elements where the color should be auto switched between black and white based on dark mode
+.color-auto-dark
+  --f7-theme-color #000
+
+.dark .color-auto-dark
+  --f7-theme-color #fff
 
 .ios .contextual-toolbar
    .delete
@@ -416,10 +453,6 @@ html
       margin-left 8px
       color var(--f7-input-text-color)
 
-// Increase width of Thing Inbox Approve Dialog
-.thing-inbox-approve-dialog
-  --f7-dialog-width 320px
-
 // Fix safe area issues inside f7-card components, where safe areas are already respected by the f7-card itself
 .card
   .block
@@ -436,8 +469,7 @@ html
 
 // Fix for grouped list indentation, e.g. Pages list
 .list:not(.accordion-list) ul .list-group ul
-  --f7-list-in-list-padding-left 0px
-  --f7-list-item-padding-horizontal 0px
+  padding-left 0
 
 .advanced-label
   font-size var(--f7-toolbar-font-size)
@@ -449,3 +481,7 @@ html
 
 .advanced-label + .advanced-label
   margin-left 5px
+
+.toast .toast-content
+  justify-content:  center
+

@@ -75,7 +75,7 @@ A regular or expandable cell
   <PropDescription>
     Type of action to perform
   </PropDescription>
-  <PropOptions>
+  <PropOptions multiple="true">
     <PropOption value="navigate" label="Navigate to page" />
     <PropOption value="command" label="Send command" />
     <PropOption value="toggle" label="Toggle Item" />
@@ -125,7 +125,7 @@ A regular or expandable cell
 </PropBlock>
 <PropBlock type="TEXT" name="actionCommand" label="Action Command">
   <PropDescription>
-    Command to send to the Item. If "Toogle Item" is selected as the action, only send the command when the state is different
+    Command to send to the Item. If "Toggle Item" is selected as the action, only send the command when the state is different
   </PropDescription>
 </PropBlock>
 <PropBlock type="TEXT" name="actionCommandAlt" label="Action Toggle Command">
@@ -151,6 +151,11 @@ A regular or expandable cell
 <PropBlock type="TEXT" name="actionPage" label="Page" context="page">
   <PropDescription>
     Page to navigate to
+  </PropDescription>
+</PropBlock>
+<PropBlock type="TEXT" name="actionPageDefineVars" label="Define Page Variables">
+  <PropDescription>
+    An object <code>{ [variableName]: [variableValue] }</code> where <code>variableValue</code> also supports expressions
   </PropDescription>
 </PropBlock>
 <PropBlock type="TEXT" name="actionPageTransition" label="Transition Effect">

@@ -1,0 +1,66 @@
+// note: this file is generated and should not be edited by hand
+
+import {
+  LabelPosition,
+  Action,
+  ActionHttpMethod,
+  ActionPageTransition,
+  ActionAnalyzerChartType,
+  ActionAnalyzerCoordSystem,
+  ActionAnalyzerAggregation
+} from '../common.gen.ts'
+
+export enum Type {
+  line = 'line',
+  bar = 'bar',
+  heatmap = 'heatmap',
+  scatter = 'scatter',
+  gauge = 'gauge',
+  pie = 'pie'
+}
+
+export interface Config {
+  type?: Type
+  labelPosition?: LabelPosition
+  color?: string
+  showSymbol?: boolean
+  barBorderRadius?: number
+  action?: Action | Action[]
+  actionUrl?: string
+  actionUrlSameWindow?: boolean
+  actionHttpMethod?: ActionHttpMethod
+  actionHttpBody?: string
+  actionItem?: string
+  actionCommand?: string
+  actionCommandAlt?: string
+  actionOptions?: string
+  actionRule?: string
+  actionRuleContext?: string
+  actionPage?: string
+  actionPageDefineVars?: Record<string, unknown>[]
+  actionPageTransition?: ActionPageTransition
+  actionModal?: string
+  actionModalConfig?: string
+  actionPhotos?: string
+  actionPhotoBrowserConfig?: string
+  actionGroupPopupItem?: string
+  actionAnalyzerItems?: string | string[]
+  actionAnalyzerChartType?: ActionAnalyzerChartType
+  actionAnalyzerCoordSystem?: ActionAnalyzerCoordSystem
+  actionAnalyzerAggregation?: ActionAnalyzerAggregation
+  actionConfirmation?: string
+  actionFeedback?: string
+  actionVariable?: string
+  actionVariableValue?: string
+  actionVariableKey?: string
+}
+
+export {
+  LabelPosition,
+  Action,
+  ActionHttpMethod,
+  ActionPageTransition,
+  ActionAnalyzerChartType,
+  ActionAnalyzerCoordSystem,
+  ActionAnalyzerAggregation
+}

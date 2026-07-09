@@ -1,21 +1,15 @@
 <template>
-  <f7-page stacked
-           name="HomePage"
-           class="page-home"
-           :class="{ 'standard-background': standardBackground }"
-           @page:init="onPageInit"
-           @page:beforein="onPageBeforeIn"
-           @page:afterin="onPageAfterIn"
-           @page:beforeout="onPageBeforeOut">
-    <f7-navbar :large="!simpleNavbar"
-               :large-transparent="!simpleNavbar"
-               class="home-nav disable-user-select"
-               ref="navbar">
+  <f7-page
+    name="HomePage"
+    class="page-home"
+    :class="{ 'standard-background': standardBackground }"
+    @page:init="onPageInit"
+    @page:beforein="onPageBeforeIn"
+    @page:afterin="onPageAfterIn"
+    @page:beforeout="onPageBeforeOut">
+    <f7-navbar :large="!simpleNavbar" :transparent="!simpleNavbar" class="home-nav disable-user-select" ref="navbar">
       <f7-nav-left>
-        <f7-link icon-ios="f7:menu"
-                 icon-aurora="f7:menu"
-                 icon-md="material:menu"
-                 panel-open="left" />
+        <f7-link icon-ios="f7:menu" icon-aurora="f7:menu" icon-md="material:menu" panel-open="left" />
       </f7-nav-left>
       <f7-nav-title-large v-if="!simpleNavbar" class="home-title-large">
         <span class="today">{{ new Date().toLocaleString(runtimeStore.locale, { weekday: 'long', day: 'numeric', month: 'long' }) }}</span>
@@ -25,70 +19,83 @@
         {{ title }}
       </f7-nav-title>
       <f7-nav-right>
+        <f7-link
+          v-if="runtimeStore.voiceIcon"
+          :icon-aurora="runtimeStore.voiceIcon"
+          :icon-ios="runtimeStore.voiceIcon"
+          :icon-md="runtimeStore.voiceIcon"
+          :tooltip="$t('home.triggerVoice')"
+          style="margin-right: 8px"
+          @click="triggerDialog" />
         <developer-dock-icon />
-        <f7-link v-if="userStore.isAdmin"
-                 icon-ios="f7:pencil"
-                 icon-aurora="f7:pencil"
-                 icon-md="material:edit"
-                 :tooltip="$t('home.editHome')"
-                 :href="(homePageComponent) ? '/settings/pages/home/home' : '/settings/pages/home/add'" />
-        <f7-link v-if="showPinToHome"
-                 icon-ios="f7:pin_fill"
-                 icon-aurora="f7:pin_fill"
-                 icon-md="material:add_location"
-                 :tooltip="$t('home.pinToHome')"
-                 @click="pinToHome" />
-        <f7-link v-if="showExitToApp"
-                 icon-ios="f7:square_arrow_right"
-                 icon-aurora="f7:square_arrow_right"
-                 icon-md="material:exit_to_app"
-                 :tooltip="$t('home.exitToApp')"
-                 @click="exitToApp" />
-        <f7-link v-else
-                 icon-ios="f7:sidebar_right"
-                 icon-aurora="f7:sidebar_right"
-                 icon-md="material:exit_to_app"
-                 :tooltip="$t('home.otherApps')"
-                 panel-open="right"
-                 @click="runtimeStore.showDeveloperDock ? f7.emit('toggleDeveloperDock') : ''" />
+        <f7-link
+          v-if="userStore.isAdmin"
+          icon-ios="f7:pencil"
+          icon-aurora="f7:pencil"
+          icon-md="material:edit"
+          :tooltip="$t('home.editHome')"
+          :href="homePageComponent ? '/settings/pages/home/home' : '/settings/pages/home/add'" />
+        <f7-link
+          v-if="showPinToHome"
+          icon-ios="f7:pin_fill"
+          icon-aurora="f7:pin_fill"
+          icon-md="material:add_location"
+          :tooltip="$t('home.pinToHome')"
+          @click="pinToHome" />
+        <f7-link
+          v-if="showExitToApp"
+          icon-ios="f7:square_arrow_right"
+          icon-aurora="f7:square_arrow_right"
+          icon-md="material:exit_to_app"
+          :tooltip="$t('home.exitToApp')"
+          @click="exitToApp" />
+        <f7-link
+          v-else
+          icon-ios="f7:sidebar_right"
+          icon-aurora="f7:sidebar_right"
+          icon-md="material:exit_to_app"
+          :tooltip="$t('home.otherApps')"
+          panel-open="right"
+          @click="appDrawerClick" />
       </f7-nav-right>
     </f7-navbar>
 
-    <f7-toolbar tabbar
-                labels
-                bottom
-                v-if="tabsVisible">
-      <f7-link tab-link="#tab-overview"
-               @click="switchTab('overview')"
-               :tab-link-active="currentTab === 'overview' ? true : null"
-               icon-ios="f7:house_fill"
-               icon-aurora="f7:house_fill"
-               icon-md="material:home"
-               :text="$t('home.overview.tab')" />
-      <f7-link v-if="tabVisible('locations')"
-               tab-link="#tab-locations"
-               @click="switchTab('locations')"
-               :tab-link-active="currentTab === 'locations' ? true : null"
-               icon-ios="f7:placemark_fill"
-               icon-aurora="f7:placemark_fill"
-               icon-md="material:place"
-               :text="$t('home.locations.tab')" />
-      <f7-link v-if="tabVisible('equipment')"
-               tab-link="#tab-equipment"
-               @click="switchTab('equipment')"
-               :tab-link-active="currentTab === 'equipment' ? true : null"
-               icon-ios="f7:cube_box_fill"
-               icon-aurora="f7:cube_box_fill"
-               icon-md="material:payments"
-               :text="$t('home.equipment.tab')" />
-      <f7-link v-if="tabVisible('properties')"
-               tab-link="#tab-properties"
-               @click="switchTab('properties')"
-               :tab-link-active="currentTab === 'properties' ? true : null"
-               icon-ios="f7:bolt_fill"
-               icon-aurora="f7:bolt_fill"
-               icon-md="material:flash_on"
-               :text="$t('home.properties.tab')" />
+    <f7-toolbar v-if="tabsVisible" tabbar labels bottom>
+      <f7-link
+        tab-link="#tab-overview"
+        @click="switchTab('overview')"
+        :tab-link-active="currentTab === 'overview' ? true : null"
+        icon-ios="f7:house_fill"
+        icon-aurora="f7:house_fill"
+        icon-md="material:home"
+        :text="$t('home.overview.tab')" />
+      <f7-link
+        v-if="tabVisible('locations')"
+        tab-link="#tab-locations"
+        @click="switchTab('locations')"
+        :tab-link-active="currentTab === 'locations' ? true : null"
+        icon-ios="f7:placemark_fill"
+        icon-aurora="f7:placemark_fill"
+        icon-md="material:place"
+        :text="$t('home.locations.tab')" />
+      <f7-link
+        v-if="tabVisible('equipment')"
+        tab-link="#tab-equipment"
+        @click="switchTab('equipment')"
+        :tab-link-active="currentTab === 'equipment' ? true : null"
+        icon-ios="f7:cube_box_fill"
+        icon-aurora="f7:cube_box_fill"
+        icon-md="material:payments"
+        :text="$t('home.equipment.tab')" />
+      <f7-link
+        v-if="tabVisible('properties')"
+        tab-link="#tab-properties"
+        @click="switchTab('properties')"
+        :tab-link-active="currentTab === 'properties' ? true : null"
+        icon-ios="f7:bolt_fill"
+        icon-aurora="f7:bolt_fill"
+        icon-md="material:flash_on"
+        :text="$t('home.properties.tab')" />
     </f7-toolbar>
 
     <f7-block v-if="!ready || (currentTab !== 'overview' && !modelReady)" class="text-align-center padding-top margin-top">
@@ -105,29 +112,16 @@
     </f7-block>
     <f7-tabs v-else>
       <f7-tab id="tab-overview" :tab-active="currentTab === 'overview' ? true : null" @tab:show="currentTab = 'overview'">
-        <overview-tab v-if="currentTab === 'overview'"
-                      :context="context"
-                      :key="overviewPageKey"
-                      :allow-chat="allowChat"
-                      :f7router />
+        <overview-tab v-if="currentTab === 'overview'" :context="context" :key="overviewPageKey" :allow-chat="allowChat" :f7router />
       </f7-tab>
       <f7-tab id="tab-locations" :tab-active="currentTab === 'locations' ? true : null" @tab:show="currentTab = 'locations'">
-        <model-tab v-if="currentTab === 'locations'"
-                   :context="context"
-                   type="locations"
-                   :page="homePageComponent" />
+        <model-tab v-if="currentTab === 'locations'" :context="context" type="locations" :page="homePageComponent" />
       </f7-tab>
       <f7-tab id="tab-equipment" :tab-active="currentTab === 'equipment' ? true : null" @tab:show="currentTab = 'equipment'">
-        <model-tab v-if="currentTab === 'equipment'"
-                   :context="context"
-                   type="equipment"
-                   :page="homePageComponent" />
+        <model-tab v-if="currentTab === 'equipment'" :context="context" type="equipment" :page="homePageComponent" />
       </f7-tab>
       <f7-tab id="tab-properties" :tab-active="currentTab === 'properties' ? true : null" @tab:show="currentTab = 'properties'">
-        <model-tab v-if="currentTab === 'properties'"
-                   :context="context"
-                   type="properties"
-                   :page="homePageComponent" />
+        <model-tab v-if="currentTab === 'properties'" :context="context" type="properties" :page="homePageComponent" />
       </f7-tab>
     </f7-tabs>
   </f7-page>
@@ -152,10 +146,6 @@
     top -6px
     letter-spacing 1px
     color var(--f7-list-item-footer-text-color)
-.edit-home-button
-  float right
-  display absolute
-  z-index 9000
 </style>
 
 <script>
@@ -183,7 +173,7 @@ export default {
     OverviewTab,
     ModelTab
   },
-  data () {
+  data() {
     return {
       showSetup: true,
       showTasks: true,
@@ -195,15 +185,15 @@ export default {
     }
   },
   computed: {
-    ready () {
+    ready() {
       return useComponentsStore().ready && useRuntimeStore().ready
     },
-    context () {
+    context() {
       return {
         store: useStatesStore().trackedItems
       }
     },
-    simpleNavbar () {
+    simpleNavbar() {
       const homeNavBar = useUIOptionsStore().homeNavBar
       if (homeNavBar !== 'default') return homeNavBar === 'simple'
       if (this.$device.desktop) {
@@ -212,7 +202,7 @@ export default {
         return this.homePageComponent?.config?.simpleNavbarMobileDefault === true
       }
     },
-    standardBackground () {
+    standardBackground() {
       const homeBackground = useUIOptionsStore().homeBackground
       if (homeBackground !== 'default') return homeBackground === 'standard'
       if (this.$device.desktop) {
@@ -221,13 +211,13 @@ export default {
         return this.homePageComponent?.config?.standardBackgroundMobileDefault === true
       }
     },
-    homePageComponent () {
+    homePageComponent() {
       const page = useComponentsStore().page('home')
       if (!page) return null
       if (page.component !== 'oh-home-page') return null
       return page
     },
-    tabsVisible () {
+    tabsVisible() {
       // Show the tabs bar if the home page component is unavailable
       if (!this.homePageComponent) return true
       // Hide the tabs bar if all model tabs are hidden
@@ -242,7 +232,7 @@ export default {
       if (visibleTo.indexOf('user:' + user.name) >= 0) return true
       return false
     },
-    allowChat () {
+    allowChat() {
       if (!this.homePageComponent) return true
       const visibleTo = this.homePageComponent.config.allowChatInputTo
       if (visibleTo === undefined || !visibleTo.length) return true
@@ -252,7 +242,7 @@ export default {
       if (visibleTo.indexOf('user:' + user.name) >= 0) return true
       return false
     },
-    title () {
+    title() {
       switch (this.currentTab) {
         case 'overview':
           return this.$t('home.overview.title')
@@ -269,47 +259,55 @@ export default {
     ...mapStores(useUIOptionsStore, useUserStore, useRuntimeStore)
   },
   watch: {
-    ready (val, oldVal) {
+    ready(val, oldVal) {
       if (val && !oldVal) {
         useStatesStore().startTrackingStates()
       }
     }
   },
   methods: {
-    onPageBeforeIn () {
+    onPageBeforeIn() {
       this.overviewPageKey = f7.utils.id()
     },
-    onPageAfterIn () {
+    onPageAfterIn() {
       if (this.ready) {
         useStatesStore().startTrackingStates()
       }
     },
-    onPageBeforeOut () {
+    onPageBeforeOut() {
       useStatesStore().stopTrackingStates()
     },
-    onPageInit () {
+    onPageInit() {
       if (window.OHApp) {
         if (window.OHApp.pinToHome) this.showPinToHome = true
         if (window.OHApp.exitToApp) this.showExitToApp = true
       }
     },
-    pinToHome () {
+    pinToHome() {
       window.OHApp.pinToHome()
     },
-    exitToApp () {
+    exitToApp() {
       window.OHApp.exitToApp()
     },
-    switchTab (tab) {
+    switchTab(tab) {
       this.currentTab = tab
       this.f7router.updateCurrentUrl('/' + this.currentTab + '/')
       this.f7router.url = '/' + this.currentTab + '/'
     },
-    tabVisible (tab) {
+    tabVisible(tab) {
       if (!this.tabsVisible) return false
       if (!this.homePageComponent) return true
       const hiddenTabs = this.homePageComponent.config.hiddenModelTabs
       if (hiddenTabs === undefined || !hiddenTabs.length) return true
       return hiddenTabs.indexOf(tab) < 0
+    },
+    triggerDialog() {
+      f7.emit('triggerDialog')
+    },
+    appDrawerClick() {
+      if (useRuntimeStore().showDeveloperDock) {
+        f7.emit('toggleDeveloperDock')
+      }
     }
   }
 }

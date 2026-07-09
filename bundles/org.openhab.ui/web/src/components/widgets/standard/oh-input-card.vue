@@ -1,8 +1,7 @@
 <template>
   <oh-card :context="context">
     <template #content>
-      <oh-input class="input-card-content"
-                :context="childContext(context.component)" />
+      <oh-input class="input-card-content" :context="cardChildContext(context.component)" />
     </template>
   </oh-card>
 </template>
@@ -15,17 +14,24 @@
 </style>
 
 <script>
-import mixin from '../widget-mixin'
+import { computed } from 'vue'
+import { useWidgetContext } from '@/components/widgets/useWidgetContext'
 import OhCard from '@/components/widgets/standard/oh-card.vue'
 import { OhInput } from '@/components/widgets/system'
 import { OhInputCardDefinition } from '@/assets/definitions/widgets/standard/cards'
 
 export default {
-  mixins: [mixin],
+  props: {
+    context: Object
+  },
   components: {
     OhCard,
     OhInput
   },
-  widget: OhInputCardDefinition
+  widget: OhInputCardDefinition,
+  setup(props) {
+    const { cardChildContext } = useWidgetContext(computed(() => props.context))
+    return { cardChildContext }
+  }
 }
 </script>

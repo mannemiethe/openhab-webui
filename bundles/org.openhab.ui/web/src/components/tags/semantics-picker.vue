@@ -1,37 +1,41 @@
 <template>
   <f7-list inline-labels no-hairlines-md>
-    <f7-list-item :title="'Semantic ' + semanticValueTitle"
-                  :after="semanticValue || 'None'"
-                  :disabled="!editable ? true : null"
-                  @click="openPopup('class')"
-                  class="aligned-smart-select"
-                  :link="editable" />
-    <f7-list-item v-if="currentSemanticType === 'Point'"
-                  title="Semantic Property"
-                  :after="tagWithHierarchy(semanticProperty) || 'None'"
-                  :disabled="!editable ? true : null"
-                  @click="openPopup('property')"
-                  class="aligned-smart-select"
-                  :link="editable" />
+    <f7-list-item
+      :title="'Semantic ' + semanticValueTitle"
+      :after="semanticValue || 'None'"
+      :disabled="!editable ? true : null"
+      @click="openPopup('class')"
+      class="aligned-smart-select"
+      :link="editable" />
+    <f7-list-item
+      v-if="currentSemanticType === 'Point'"
+      title="Semantic Property"
+      :after="tagWithHierarchy(semanticProperty) || 'None'"
+      :disabled="!editable ? true : null"
+      @click="openPopup('property')"
+      class="aligned-smart-select"
+      :link="editable" />
     <f7-list-group>
-      <semantics-picker-popup v-if="popupType === 'class'"
-                              ref="classPopup"
-                              :key="'semantics-class'"
-                              :item="item"
-                              :hideNone="hideNone"
-                              :classMode="true"
-                              :semanticClass="semanticClass"
-                              @changed="itemChanged"
-                              @close="closePopup" />
-      <semantics-picker-popup v-if="popupType === 'property'"
-                              ref="propertyPopup"
-                              :key="'semantics-property'"
-                              :item="item"
-                              :hideNone="hideNone"
-                              :propertyMode="true"
-                              @changed="itemChanged"
-                              :semanticProperty="semanticProperty"
-                              @close="closePopup" />
+      <semantics-picker-popup
+        v-if="popupType === 'class'"
+        ref="classPopup"
+        :key="'semantics-class'"
+        :item="item"
+        :hideNone="hideNone"
+        :classMode="true"
+        :semanticClass="semanticClass"
+        @changed="itemChanged"
+        @close="closePopup" />
+      <semantics-picker-popup
+        v-if="popupType === 'property'"
+        ref="propertyPopup"
+        :key="'semantics-property'"
+        :item="item"
+        :hideNone="hideNone"
+        :propertyMode="true"
+        @changed="itemChanged"
+        :semanticProperty="semanticProperty"
+        @close="closePopup" />
     </f7-list-group>
   </f7-list>
 </template>
@@ -54,12 +58,12 @@ export default {
   components: {
     SemanticsPickerPopup
   },
-  setup () {
+  setup() {
     return {
       f7
     }
   },
-  data () {
+  data() {
     return {
       semanticClass: '',
       semanticProperty: '',
@@ -67,18 +71,18 @@ export default {
     }
   },
   computed: {
-    editable () {
+    editable() {
       return this.createMode || (this.item && this.item.editable)
     },
-    currentSemanticType () {
+    currentSemanticType() {
       return this.semanticType(this.semanticClass)
     },
-    semanticValue () {
+    semanticValue() {
       if (!this.semanticClass) return null
       const value = this.tagWithHierarchy(this.semanticClass)
       return value || this.currentSemanticType
     },
-    semanticValueTitle () {
+    semanticValueTitle() {
       if (this.currentSemanticType === 'Location') return 'Location'
       else if (this.currentSemanticType === 'Equipment') return 'Equipment'
       else if (this.currentSemanticType === 'Point') return 'Point'
@@ -86,7 +90,7 @@ export default {
     }
   },
   methods: {
-    openPopup (type) {
+    openPopup(type) {
       if (!this.editable) return
       this.popupType = type
       this.$nextTick(() => {
@@ -95,10 +99,10 @@ export default {
         if (popupEl) f7.popup.open(popupEl)
       })
     },
-    closePopup () {
+    closePopup() {
       this.popupType = null
     },
-    tagWithHierarchy (tag) {
+    tagWithHierarchy(tag) {
       if (!tag) return null
       let parentTagId = useSemanticsStore().Tags.find((t) => t.name === tag).parent
       if (!parentTagId) return null // no parent tag, so this is the root class
@@ -112,7 +116,7 @@ export default {
       }
       return value
     },
-    itemChanged () {
+    itemChanged() {
       if (!this.item.tags) return
       this.semanticClass = ''
       this.semanticProperty = ''
@@ -135,7 +139,7 @@ export default {
       }
     }
   },
-  mounted () {
+  mounted() {
     this.itemChanged()
   }
 }

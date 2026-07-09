@@ -1,33 +1,23 @@
 <template>
-  <model-card type="property"
-              :context="context"
-              :element="element"
-              header-height="150px">
+  <model-card type="property" :context="context" :element="element" header-height="150px">
     <template #glance>
-      <div v-if="context && context.component.slots && context.component.slots.glance" class="display-flex flex-direction-column align-items-flex-start">
-        <generic-widget-component :context="childContext(slotComponent)"
-                                  v-for="(slotComponent, idx) in context.component.slots.glance"
-                                  :key="'glance-' + idx" />
+      <div v-if="'glance' in slots" class="display-flex flex-direction-column align-items-flex-start">
+        <generic-widget-component
+          v-for="(slotComponent, idx) in slots.glance"
+          :context="childContext(slotComponent)"
+          :key="'glance-' + idx" />
       </div>
       <!-- <div class="property-stats" v-else><small v-if="element.points">{{element.points.length}}</small></div> -->
     </template>
     <div class="card-content-padding">
       <generic-widget-component :context="listContext" />
       <p class="padding-top margin-horizontal">
-        <f7-button outline
-                   round
-                   :color="color"
-                   :href="`/analyzer/?items=${element.points.map((m) => m.name).join(',')}`">
+        <f7-button outline round :color="color" :href="`/analyzer/?items=${element.points.map((m) => m.name).join(',')}`">
           {{ element.points.length > 1 ? $t('home.cards.analyzeAll') : $t('home.cards.analyze') }}
         </f7-button>
       </p>
       <p class="margin-horizontal">
-        <f7-button fill
-                   round
-                   large
-                   card-close
-                   :color="color"
-                   :text="$t('home.cards.close')" />
+        <f7-button fill round large card-close :color="color" :text="$t('home.cards.close')" />
       </p>
     </div>
   </model-card>
@@ -41,7 +31,8 @@
 </style>
 
 <script>
-import mixin from '@/components/widgets/widget-mixin'
+import { computed } from 'vue'
+import { useWidgetContext } from '@/components/widgets/useWidgetContext'
 import itemDefaultListComponent, { itemPathLabel } from '@/components/widgets/standard/list/default-list-item'
 import CardMixin from './card-mixin'
 import ModelCard from './model-card.vue'
@@ -49,15 +40,26 @@ import ModelCard from './model-card.vue'
 import { useStatesStore } from '@/js/stores/useStatesStore'
 
 export default {
-  mixins: [mixin, CardMixin],
+  mixins: [CardMixin],
   props: {
-    tabContext: Object
+    context: Object,
+    tabContext: Object,
+    element: Object
   },
   components: {
     ModelCard
   },
+  data() {
+    return {
+      type: 'property'
+    }
+  },
+  setup(props) {
+    const { config, childContext, slots } = useWidgetContext(computed(() => props.context))
+    return { config, childContext, slots }
+  },
   computed: {
-    listContext () {
+    listContext() {
       const footerDefaults = { contextLabelSource: 'path' }
       let pointsByType = []
       for (let pointType in this.itemsByPointType) {
@@ -86,7 +88,7 @@ export default {
         }
       }
     },
-    itemsByPointType () {
+    itemsByPointType() {
       const points = {}
       this.element.points.forEach((item) => {
         const pointType = item.metadata.semantics.value.replace(/^.*_/g, '')

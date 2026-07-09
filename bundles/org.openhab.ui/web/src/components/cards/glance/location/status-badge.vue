@@ -1,34 +1,35 @@
 <template>
-  <f7-chip v-if="type === 'alarms' && reduce > 0"
-           class="alarm-badge"
-           color="red"
-           icon-f7="exclamationmark_triangle_fill">
+  <f7-chip v-if="type === 'alarms' && reduce > 0" class="alarm-badge" color="red" icon-f7="exclamationmark_triangle_fill">
     {{ reduce }}
   </f7-chip>
-  <span v-else
-        class="padding-right location-status-badge"
-        v-show="reduce || (type === 'lock' && map.length > 0)"
-        :class="{ invert: invertColor }">
-    <oh-icon v-if="config.icon.indexOf('oh:') === 0 && reduce > 0"
-             :key="type"
-             :icon="config.icon.replace('oh:', '')"
-             :state="config.state"
-             class="oh-icon-badge"
-             width="20"
-             height="20" />
-    <f7-icon v-else-if="config.icon.indexOf('f7:') === 0"
-             :f7="config.icon.replace('f7:', '')"
-             :color="invertColor ? 'black' : 'white'"
-             class="f7-icon-badge"
-             size="20" />
-    <oh-icon v-if="config.icon.indexOf('oh:') === 0 && config.stateOff && reduce < 1"
-             :key="type + 'off'"
-             :icon="config.icon.replace('oh:', '')"
-             :state="config.stateOff"
-             class="oh-icon-badge"
-             width="20"
-             height="20" />
-    <span class="glance-label" v-show="reduce > 1">{{ reduce }}</span>
+  <span
+    v-else
+    v-show="reduce || (type === 'lock' && map.length > 0)"
+    class="padding-right location-status-badge"
+    :class="{ invert: invertColor }">
+    <oh-icon
+      v-if="config.icon.indexOf('oh:') === 0 && reduce > 0"
+      :key="type"
+      :icon="config.icon.replace('oh:', '')"
+      :state="config.state"
+      class="oh-icon-badge"
+      width="20"
+      height="20" />
+    <f7-icon
+      v-else-if="config.icon.indexOf('f7:') === 0"
+      :f7="config.icon.replace('f7:', '')"
+      :color="invertColor ? 'black' : 'white'"
+      class="f7-icon-badge"
+      size="20" />
+    <oh-icon
+      v-if="config.icon.indexOf('oh:') === 0 && config.stateOff && reduce < 1"
+      :key="type + 'off'"
+      :icon="config.icon.replace('oh:', '')"
+      :state="config.stateOff"
+      class="oh-icon-badge"
+      width="20"
+      height="20" />
+    <span v-show="reduce > 1" class="glance-label">{{ reduce }}</span>
   </span>
 </template>
 
@@ -66,7 +67,7 @@ export default {
     invertColor: Boolean,
     store: Object
   },
-  data () {
+  data() {
     return {
       badgeConfigs: {
         alarms: { icon: 'f7:exclamationmark_triangle_fill' },
@@ -87,16 +88,17 @@ export default {
     }
   },
   computed: {
-    config () {
+    config() {
       if (this.badgeOverrides) {
+        const badges = Object.assign({}, this.badgeConfigs)
         const override = this.badgeOverrides[this.type]
         if (override && override.badge) {
-          return Object.assign(this.badgeConfigs[this.type], override.badge)
+          return Object.assign(badges[this.type], override.badge)
         }
       }
       return this.badgeConfigs[this.type]
     },
-    query () {
+    query() {
       let direct, equipment, allPoints, points
       switch (this.type) {
         case 'battery':
@@ -203,12 +205,12 @@ export default {
           return []
       }
     },
-    map () {
+    map() {
       // Make sure items are only counted once
       const itemNames = [...new Set(this.query.map((item) => item.name))]
       return itemNames.map((itemName) => this.store[itemName].state)
     },
-    reduce () {
+    reduce() {
       const ast = this.overrideExpression()
       if (ast) {
         return this.map.filter((state) => expr.evaluate(ast, { state, Number })).length
@@ -217,7 +219,12 @@ export default {
         case 'blinds':
           return this.map.filter((state) => state === 'OPEN' || state === 'ON' || Number.parseInt(state) === 0).length
         case 'lights':
-          return this.map.filter((state) => state === 'ON' || (state.split(',').length === 3 && state.split(',')[2] !== '0') || (state.indexOf(',') < 0 && Number.parseInt(state) > 0)).length
+          return this.map.filter(
+            (state) =>
+              state === 'ON' ||
+              (state.split(',').length === 3 && state.split(',')[2] !== '0') ||
+              (state.indexOf(',') < 0 && Number.parseInt(state) > 0)
+          ).length
         case 'projectors':
         case 'screens':
         case 'speakers':
@@ -226,7 +233,7 @@ export default {
           return this.map.filter((state) => state === 'ON' || state === 'OPEN').length
       }
     },
-    queryLightPoints () {
+    queryLightPoints() {
       // Look for all control points on the location with light, color and brightness properties.
       // For a user: It is advisable that lights represented as a point on a location are not represented anywhere in the model as a light point in an equipment,
       // or they will be counted twice (possibly in different locations). Therefore only tag one light point for a given physical light.
@@ -238,24 +245,32 @@ export default {
       points.push(...findPoints(this.element.properties, 'Point_Status', true, 'Property_Brightness'))
       points.push(...findPoints(this.element.properties, 'Point_Status', true, 'Property_Light'))
       // Repeat this for equipment on the location.
-      points.push(...this.element.equipment.map((e) => {
-        const allPoints = allEquipmentPoints([e], true) // consider sub-equipment as well
-        const equipmentPoints = []
-        equipmentPoints.push(...findPoints(allPoints, 'Point_Control', true, 'Property_Color'))
-        equipmentPoints.push(...findPoints(allPoints, 'Point_Control', true, 'Property_Brightness'))
-        equipmentPoints.push(...findPoints(allPoints, 'Point_Control', true, 'Property_Light'))
-        equipmentPoints.push(...findPoints(allPoints, 'Point_Status', true, 'Property_Color'))
-        equipmentPoints.push(...findPoints(allPoints, 'Point_Status', true, 'Property_Brightness'))
-        equipmentPoints.push(...findPoints(allPoints, 'Point_Status', true, 'Property_Light'))
-        return equipmentPoints
-      }).flat())
+      points.push(
+        ...this.element.equipment
+          .map((e) => {
+            const allPoints = allEquipmentPoints([e], true) // consider sub-equipment as well
+            const equipmentPoints = []
+            equipmentPoints.push(...findPoints(allPoints, 'Point_Control', true, 'Property_Color'))
+            equipmentPoints.push(...findPoints(allPoints, 'Point_Control', true, 'Property_Brightness'))
+            equipmentPoints.push(...findPoints(allPoints, 'Point_Control', true, 'Property_Light'))
+            equipmentPoints.push(...findPoints(allPoints, 'Point_Status', true, 'Property_Color'))
+            equipmentPoints.push(...findPoints(allPoints, 'Point_Status', true, 'Property_Brightness'))
+            equipmentPoints.push(...findPoints(allPoints, 'Point_Status', true, 'Property_Light'))
+            return equipmentPoints
+          })
+          .flat()
+      )
       // For light source equipment not yet covered above we look beyond property light, color and brightness,
       // but will only consider one point (first in the list), with priority to switch.
       // In summary: assumption is the equipment represents a unique light.
       const lightSourceEquipment = findEquipment(this.element.equipment, 'Equipment_LightSource', true, true)
       const lightSourceEquipmentNoLightPoints = lightSourceEquipment.filter((e) => !e.points.some((p) => points.includes(p)))
       lightSourceEquipmentNoLightPoints.forEach((e) => {
-        const lightSourcePoints = [...findPoints(e.points, 'Point_Control_Switch', false), ...findPoints(e.points, 'Point_Control', true), ...findPoints(e.points, 'Point_Status', true)]
+        const lightSourcePoints = [
+          ...findPoints(e.points, 'Point_Control_Switch', false),
+          ...findPoints(e.points, 'Point_Control', true),
+          ...findPoints(e.points, 'Point_Status', true)
+        ]
         if (lightSourcePoints.length) {
           points.push(lightSourcePoints.slice(0, 1))
         }
@@ -266,7 +281,7 @@ export default {
     }
   },
   methods: {
-    overrideExpression () {
+    overrideExpression() {
       if (this.badgeOverrides && !this.exprAst) {
         const override = this.badgeOverrides[this.type]
         if (override && override.expression) {

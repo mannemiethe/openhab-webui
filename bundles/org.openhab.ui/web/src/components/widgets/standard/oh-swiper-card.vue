@@ -1,23 +1,30 @@
 <template>
   <oh-card :context="context" :content-class="['no-padding']">
     <template #content>
-      <oh-swiper v-bind="$attrs" :context="childContext(context.component)" />
+      <oh-swiper :context="cardChildContext(context.component)" />
     </template>
   </oh-card>
 </template>
 
 <script>
-import mixin from '../widget-mixin'
+import { computed } from 'vue'
+import { useWidgetContext } from '@/components/widgets/useWidgetContext'
 import OhCard from '@/components/widgets/standard/oh-card.vue'
 import OhSwiper from '../system/oh-swiper.vue'
 import { OhSwiperCardDefinition } from '@/assets/definitions/widgets/standard/cards'
 
 export default {
-  mixins: [mixin],
+  props: {
+    context: Object
+  },
   components: {
     OhCard,
     OhSwiper
   },
-  widget: OhSwiperCardDefinition
+  widget: OhSwiperCardDefinition,
+  setup(props) {
+    const { cardChildContext } = useWidgetContext(computed(() => props.context))
+    return { cardChildContext }
+  }
 }
 </script>

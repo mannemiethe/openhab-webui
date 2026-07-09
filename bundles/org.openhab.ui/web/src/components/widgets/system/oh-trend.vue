@@ -1,66 +1,72 @@
 <template>
-  <trend v-if="showTrend"
-         :key="'trend' + config.item"
-         :style="config.style"
-         :width="trendWidth"
-         :viewWidth="trendWidth"
-         class="trend"
-         :data="trendData"
-         :gradient="trendGradient"
-         :gradientDirection="trendGradientDirection"
-         :stroke-width="trendStrokeWidth"
-         auto-draw
-         smooth />
+  <trend
+    v-if="showTrend"
+    :key="'trend' + config.item"
+    :style="config.style"
+    :width="trendWidth"
+    :viewWidth="trendWidth"
+    class="trend"
+    :data="trendData"
+    :gradient="trendGradient"
+    :gradientDirection="trendGradientDirection"
+    :stroke-width="trendStrokeWidth"
+    auto-draw
+    smooth />
 </template>
 
 <script>
-import mixin from '../widget-mixin'
 import { OhTrendDefinition } from '@/assets/definitions/widgets/system'
+import { computed } from 'vue'
+import { useWidgetContext } from '@/components/widgets/useWidgetContext'
 
 import Trend from '@hotdogee/vue3-trend'
 
 export default {
-  mixins: [mixin],
   props: {
-    width: [ Number, String ]
+    context: Object,
+    width: [Number, String]
   },
   components: {
     Trend
   },
   widget: OhTrendDefinition,
-  data () {
+  setup(props) {
+    const { config } = useWidgetContext(computed(() => props.context))
+    return { config }
+  },
+  data() {
     return {
       trendData: [],
       showTrend: false
     }
   },
   computed: {
-    trendItem () {
+    trendItem() {
       return this.config.trendItem
     },
-    trendWidth () {
+    trendWidth() {
       return this.width || this.config.trendWidth
     },
-    trendGradient () {
+    trendGradient() {
       return this.config.trendGradient || ['#2196f3', '#5ac8fa']
     },
-    trendGradientDirection () {
+    trendGradientDirection() {
       return this.config.trendGradientDirection || 'top'
     },
-    trendStrokeWidth () {
+    trendStrokeWidth() {
       return this.config.trendStrokeWidth || 3
     }
   },
-  mounted () {
+  mounted() {
     this.buildTrend()
   },
   watch: {
-    trendItem (item) {
+    trendItem(item) {
       this.buildTrend()
     }
   },
   methods: {
-    buildTrend () {
+    buildTrend() {
       this.trendData = []
       this.showTrend = false
       if (!this.trendItem) return []
