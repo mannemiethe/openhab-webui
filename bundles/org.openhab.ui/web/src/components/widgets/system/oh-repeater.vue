@@ -50,7 +50,7 @@ const { config, childContext, evaluateExpression, defaultSlots } = useWidgetCont
 
 // Data/State
 const error = ref<string | null>(null)
-const sourceCache = ref<SourceArray | null>(null)
+const sourceCache = ref<SourceArray | Promise<SourceArray> | null>(null)
 const sourceType = ref<OhRepeater.SourceType | null>(null)
 const forKey = ref<string | null>(null)
 
@@ -103,7 +103,15 @@ const childrenContexts = computed(() => {
 
 const source = computedAsync(async (): Promise<SourceArray> => {
   const cfg = config.value
-  if (cfg.cacheSource && sourceCache.value != null) return sourceCache.value
+  if (cfg.cacheSource && sourceCache.value != null) {
+    try {
+      return await sourceCache.value
+    } catch (e) {
+      sourceCache.value = null
+      console.error('oh-repeater: error fetching cached source data', e)
+      return []
+    }
+  }
 
   error.value = null
   forKey.value = null
@@ -128,7 +136,7 @@ const source = computedAsync(async (): Promise<SourceArray> => {
     }
   }
 
-  let sourceResult
+  let sourcePromise: Promise<SourceArray> | null = null
   try {
     switch (sourceType.value) {
       case OhRepeater.SourceType.range:
@@ -139,19 +147,19 @@ const source = computedAsync(async (): Promise<SourceArray> => {
           .fill(start)
           .map((x, y) => x + y * step)
       case OhRepeater.SourceType.itemsWithTags:
-        sourceResult = await getItemsWithTags()
+        sourcePromise = getItemsWithTags()
         break
       case OhRepeater.SourceType.itemsInGroup:
-        sourceResult = await getItemsInGroup()
+        sourcePromise = getItemsInGroup()
         break
       case OhRepeater.SourceType.itemStateOptions:
-        sourceResult = await getItemStateOptions()
+        sourcePromise = getItemStateOptions()
         break
       case OhRepeater.SourceType.itemCommandOptions:
-        sourceResult = await getItemCommandOptions()
+        sourcePromise = getItemCommandOptions()
         break
       case OhRepeater.SourceType.rulesWithTags:
-        sourceResult = await getRulesWithTags()
+        sourcePromise = getRulesWithTags()
         break
       case OhRepeater.SourceType.array:
       default:
@@ -165,13 +173,18 @@ const source = computedAsync(async (): Promise<SourceArray> => {
         }
         return cfg.in
     }
+
+    if (!sourcePromise) return []
+    if (cfg.cacheSource) sourceCache.value = sourcePromise
+
+    const sourceResult = await sourcePromise
+    if (cfg.cacheSource && sourceCache.value === sourcePromise) sourceCache.value = sourceResult
+    return sourceResult
   } catch (e) {
+    if (cfg.cacheSource && sourcePromise && sourceCache.value === sourcePromise) sourceCache.value = null
     console.error('oh-repeater: error fetching source data', e)
     return []
   }
-
-  sourceCache.value = config.value.cacheSource ? sourceResult : null
-  return sourceResult
 })
 
 // Methods
