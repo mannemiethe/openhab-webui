@@ -22,13 +22,6 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Check out openHAB Core
-        uses: actions/checkout@v4
-        with:
-          repository: openhab/openhab-core
-          ref: ${{ env.OPENHAB_VERSION }}
-          path: openhab-core
-
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -36,21 +29,11 @@ jobs:
           java-version: '21'
           cache: maven
 
-      - name: Apply openHAB Core depth patch
-        working-directory: openhab-core
-        run: git apply ../docker/openhab-webui/openhab-core-depth.patch
-
-      - name: Build patched Core REST bundle
-        working-directory: openhab-core
-        run: ./mvnw -pl bundles/org.openhab.core.io.rest.core -am -DskipTests -Dspotless.check.skip=true package
-
       - name: Build Main UI bundle
         run: ./mvnw -pl bundles/org.openhab.ui -am -DskipTests -Dspotless.check.skip=true package
 
-      - name: Verify bundles exist
-        run: |
-          test -f "bundles/org.openhab.ui/target/org.openhab.ui-${OPENHAB_VERSION}.jar"
-          test -f "openhab-core/bundles/org.openhab.core.io.rest.core/target/org.openhab.core.io.rest.core-${OPENHAB_VERSION}.jar"
+      - name: Verify bundle exists
+        run: test -f "bundles/org.openhab.ui/target/org.openhab.ui-${OPENHAB_VERSION}.jar"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

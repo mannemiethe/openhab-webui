@@ -1420,7 +1420,6 @@ export const getItemByName = <ThrowOnError extends boolean = false>(parameters: 
     itemName: string;
     metadata?: string;
     recursive?: boolean;
-    depth?: number;
     parents?: boolean;
 }, options?: Options<never, ThrowOnError>) => {
     const params = buildClientParams([parameters], [{ args: [
@@ -1428,7 +1427,6 @@ export const getItemByName = <ThrowOnError extends boolean = false>(parameters: 
                 { in: 'path', key: 'itemName' },
                 { in: 'query', key: 'metadata' },
                 { in: 'query', key: 'recursive' },
-                { in: 'query', key: 'depth' },
                 { in: 'query', key: 'parents' }
             ] }]);
     return (options?.client ?? client).get<GetItemByNameResponses, GetItemByNameErrors, ThrowOnError, 'data'>({
@@ -1503,7 +1501,6 @@ export const getItems = <ThrowOnError extends boolean = false>(parameters?: {
     tags?: string;
     metadata?: string;
     recursive?: boolean;
-    depth?: number;
     parents?: boolean;
     fields?: string;
     staticDataOnly?: boolean;
@@ -1514,7 +1511,6 @@ export const getItems = <ThrowOnError extends boolean = false>(parameters?: {
                 { in: 'query', key: 'tags' },
                 { in: 'query', key: 'metadata' },
                 { in: 'query', key: 'recursive' },
-                { in: 'query', key: 'depth' },
                 { in: 'query', key: 'parents' },
                 { in: 'query', key: 'fields' },
                 { in: 'query', key: 'staticDataOnly' }
