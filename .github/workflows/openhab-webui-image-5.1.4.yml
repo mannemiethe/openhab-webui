@@ -13,7 +13,7 @@ permissions:
 env:
   OPENHAB_VERSION: 5.1.4
   IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/openhab
-  IMAGE_TAG: 5.1.4-webui-mainui-only
+  IMAGE_TAG: 5.1.4-webui-context-repeater-fix
 
 jobs:
   build-image:
@@ -55,4 +55,4 @@ jobs:
             OPENHAB_VERSION=${{ env.OPENHAB_VERSION }}
           tags: |
             ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-            ${{ env.IMAGE_NAME }}:${{ env.OPENHAB_VERSION }}-webui-mainui-only-${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:${{ env.OPENHAB_VERSION }}-webui-context-repeater-fix-${{ github.sha }}
