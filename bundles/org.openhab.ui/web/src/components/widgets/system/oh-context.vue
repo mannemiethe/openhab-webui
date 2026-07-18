@@ -14,6 +14,12 @@ import { useWidgetContext } from '@/components/widgets/useWidgetContext'
 import { OhContextDefinition } from '@/assets/definitions/widgets/system'
 import { useStatesStore } from '@/js/stores/useStatesStore'
 
+const INVALID_ITEM_STORE_PROPS = new Set(['_keys', '__ob__', 'toString', 'undefined', 'constructor', 'getters', 'effect', '_vm', 'toJSON'])
+
+function isTrackableItemStoreProp(prop) {
+  return typeof prop === 'string' && !INVALID_ITEM_STORE_PROPS.has(prop) && !prop.startsWith('__v_')
+}
+
 export default {
   inheritAttrs: false,
   props: {
@@ -72,9 +78,9 @@ export default {
     collectMissingItems(evaluateDefaults) {
       const accessedItems = new Set()
       const trackingStore = new Proxy(this.context.store, {
-        get(target, prop) {
-          if (typeof prop === 'string') accessedItems.add(prop)
-          return target[prop]
+        get(target, prop, receiver) {
+          if (isTrackableItemStoreProp(prop)) accessedItems.add(prop)
+          return Reflect.get(target, prop, receiver)
         }
       })
       evaluateDefaults({ ...this.context, store: trackingStore })
