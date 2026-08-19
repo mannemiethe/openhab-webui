@@ -33,6 +33,7 @@ export default () => [
     'Fetch Item Metadata Namespaces',
     'Fetch the metadata from these namespaces (for "itemsInGroup" and "itemsWithTags" source types)'
   ),
+  pb('recursive', 'Fetch recursively', 'Fetch items recursively for "itemsInGroup" and "itemsWithTags" source types'),
   pt('filter', 'Filter expression', 'Specify an expression WITHOUT THE = PREFIX to filter the resulting array'),
   pt('map', 'Map expression', 'Specify an expression WITHOUT THE = PREFIX to transform the resulting array elements'),
   pb(
